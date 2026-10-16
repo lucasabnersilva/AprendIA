@@ -1,15 +1,22 @@
-const express = require('express');
+const http = require('http');
+const fs = require('fs');
 const path = require('path');
 
-const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static(__dirname));
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+const server = http.createServer((req, res) => {
+    const filePath = path.join(__dirname, 'index.html');
+    fs.readFile(filePath, (err, content) => {
+        if (err) {
+            res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('Erro ao carregar o protótipo.');
+        } else {
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(content);
+        }
+    });
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor AprendIA rodando em http://localhost:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`AprendIA rodando na porta ${PORT}`);
 });

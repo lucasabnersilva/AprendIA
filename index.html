@@ -540,7 +540,7 @@
       <span class="trophy-big" id="celebIcone" aria-hidden="true">🏆</span>
     </div>
     <h2 id="celebTitulo">Trilha concluída!</h2>
-    <p id="celebDesc">Você completou todos os módulos de <strong id="celebTema" style="color:var(--text)"></strong>.</p>
+    <p id="celebDesc">Você completou todos os módulos.</p>
     <div class="celeb-stats">
       <div><span>⭐</span><strong id="celebXP">0</strong><small>XP total</small></div>
       <div><span>🔥</span><strong id="celebStreak">1</strong><small>dia(s)</small></div>
@@ -1834,6 +1834,45 @@
   }
 };
 
+  /* ================= Embaralhamento de Opções ================= */
+  function embaralharQuestao(q) {
+    if (!q) return;
+    const opcoes = q.opts || q.opcoes;
+    if (!opcoes || !Array.isArray(opcoes) || opcoes.length <= 1) return;
+    const idxCorreto = typeof q.correta === "number" ? q.correta : 0;
+
+    const mapped = opcoes.map((texto, idx) => ({
+      texto,
+      correta: idx === idxCorreto
+    }));
+
+    for (let i = mapped.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [mapped[i], mapped[j]] = [mapped[j], mapped[i]];
+    }
+
+    const novasOpcoes = mapped.map(m => m.texto);
+    const novoIndiceCorreto = mapped.findIndex(m => m.correta);
+
+    if (q.opts) q.opts = novasOpcoes;
+    if (q.opcoes) q.opcoes = novasOpcoes;
+    q.correta = novoIndiceCorreto;
+  }
+
+  function embaralharTodasQuestoes() {
+    for (const t of Object.keys(trilhasPorTema)) {
+      const temaData = trilhasPorTema[t];
+      if (temaData.nivelamento) {
+        temaData.nivelamento.forEach(q => embaralharQuestao(q));
+      }
+      if (temaData.modulos) {
+        temaData.modulos.forEach(m => {
+          if (m && m.licao) embaralharQuestao(m.licao);
+        });
+      }
+    }
+  }
+
   function getModulos() {
     const tema = state.tema || temas[0];
     return (trilhasPorTema[tema] && trilhasPorTema[tema].modulos) || trilhasPorTema["Informática básica"].modulos;
@@ -2176,6 +2215,7 @@
     som.toque();
     state.logado = true;
     salvarSessao();
+    embaralharTodasQuestoes();
     renderTemas();
     setBot("botTema", "happy");
     mostrarTela("telaTema");
@@ -2202,6 +2242,8 @@
   function iniciarTeste() {
     som.toque();
     sincronizarProgressoTema();
+    const perguntas = getPerguntasNivelamento();
+    perguntas.forEach(q => embaralharQuestao(q));
     idxTeste = 0;
     acertosTeste = 0;
     renderPerguntaTeste();
@@ -2277,6 +2319,7 @@
     state.unidadeAtiva = unid;
     state.concluidos = feitos;
     state.unidadesCelebradas = cel;
+    state.trilhaCelebrada = false;
     state.moduloDificuldade = `Módulo ${modInicio}`;
     salvarProgressoTema();
 
@@ -2417,22 +2460,29 @@
     const unidadeConcluida = modulos.every(m => state.concluidos.includes(m.id));
     const trofeu = document.createElement("div");
     const iconeFinal = unid === 1 ? "🌱" : unid === 2 ? "⚡" : "🏆";
-    const labelFinal = unid === 1 ? "Meta Nível 1" : unid === 2 ? "Meta Nível 2" : "Troféu Supremo";
+    const labelFinal = unid === 1 ? "Meta Nível 1" : unid === 2 ? "Meta Nível 2" : "Mestre da Trilha";
     const subLabelFinal = unid === 1
       ? (unidadeConcluida ? "Intermediário liberado!" : "Conclua 5 lições")
       : unid === 2
       ? (unidadeConcluida ? "Avançado liberado!" : "Conclua 10 lições")
-      : (unidadeConcluida ? "Trilha Concluída!" : "Conclua as 15 lições");
+      : (unidadeConcluida ? "Trilha Concluída! Toque para celebrar" : "Conclua as 15 lições");
 
     trofeu.className = "node trophy " + (unidadeConcluida ? "done" : "locked");
+    if (unidadeConcluida) trofeu.classList.add("pop-in");
     trofeu.style.left = (fim.x - 46) + "px";
     trofeu.style.top = (fim.y - 42) + "px";
     trofeu.setAttribute("role", "button");
     trofeu.setAttribute("aria-label", labelFinal + ": " + subLabelFinal);
     trofeu.innerHTML = `<span aria-hidden="true">${iconeFinal}</span>`;
-    if (unidadeConcluida && unid < 3) {
+    if (unidadeConcluida) {
       trofeu.style.cursor = "pointer";
-      trofeu.onclick = () => mudarUnidade(unid + 1);
+      if (unid === 1) {
+        trofeu.onclick = () => { som.toque(); mudarUnidade(2); };
+      } else if (unid === 2) {
+        trofeu.onclick = () => { som.toque(); mudarUnidade(3); };
+      } else {
+        trofeu.onclick = () => { som.fanfarra(); mostrarCelebracao(); };
+      }
     }
     mapa.appendChild(trofeu);
 
@@ -2458,6 +2508,7 @@
     respLicaoSel = null;
     const modulosTodos = getModulos();
     const mod = modulosTodos.find(m => m.id === idMod);
+    if (mod && mod.licao) embaralharQuestao(mod.licao);
     $("tituloModuloLicao").textContent = mod.nome;
     $("perguntaLicao").textContent = mod.licao.pergunta;
     $("barraLicao").style.width = "0%";
@@ -2554,7 +2605,7 @@
     const modulosTodos = getModulos();
     if (!state.unidadesCelebradas) state.unidadesCelebradas = [];
 
-    // Checagem de conclusão de cada nível/unidade
+    // Checagem de conclusão de cada nível/unidade e de toda a trilha (Mestre da Trilha)
     if (moduloAtualId === 5 && !state.unidadesCelebradas.includes(1)) {
       state.unidadesCelebradas.push(1);
       state.unidadeAtiva = 2;
@@ -2569,24 +2620,33 @@
       setTimeout(() => mostrarCelebracaoUnidade(2), 350);
       return;
     }
-    if (state.concluidos.length === modulosTodos.length && !state.trilhaCelebrada) {
+    const todaTrilhaFeita = moduloAtualId === 15 || 
+      (modulosTodos.length > 0 && modulosTodos.every(m => state.concluidos.includes(m.id))) ||
+      state.concluidos.length >= modulosTodos.length;
+
+    if (todaTrilhaFeita && !state.unidadesCelebradas.includes(3)) {
+      state.unidadesCelebradas.push(3);
       state.trilhaCelebrada = true;
       salvarProgressoTema();
       setTimeout(mostrarCelebracao, 350);
+      return;
     }
   }
 
   /* ---------- Celebração de unidade / trilha ---------- */
   function mostrarCelebracaoUnidade(numUnidade) {
+    if (numUnidade === 3) {
+      mostrarCelebracao();
+      return;
+    }
     const tema = state.tema || temas[0];
     const titulo = numUnidade === 1 ? "🌱 Nível Fácil Concluído!" : "⚡ Nível Intermediário Concluído!";
     const desc = numUnidade === 1
-      ? `Parabéns! Você completou os 5 módulos do Nível Fácil de ${tema}. O Nível Intermediário com mais 5 perguntas acaba de ser desbloqueado!`
-      : `Sensacional! Você concluiu os 10 módulos de ${tema}. O Nível Difícil / Avançado com os últimos 5 desafios acaba de ser desbloqueado!`;
+      ? `Parabéns! Você completou os 5 módulos do Nível Fácil de <strong style="color:var(--text)">${tema}</strong>. O Nível Intermediário com mais 5 perguntas acaba de ser desbloqueado!`
+      : `Sensacional! Você concluiu os 10 módulos de <strong style="color:var(--text)">${tema}</strong>. O Nível Difícil / Avançado com os últimos 5 desafios acaba de ser desbloqueado!`;
 
     $("celebTitulo").textContent = titulo;
     $("celebDesc").innerHTML = desc;
-    $("celebTema").textContent = tema;
     if ($("celebIcone")) $("celebIcone").textContent = numUnidade === 1 ? "🌱" : "⚡";
     $("celebXP").textContent = state.xp;
     $("celebStreak").textContent = state.sequencia;
@@ -2601,8 +2661,9 @@
 
   function mostrarCelebracao() {
     const modulos = getModulos();
-    $("celebTitulo").textContent = "🏆 Trilha Concluída!";
-    $("celebDesc").innerHTML = `Parabéns! Você dominou todos os 15 módulos (Fácil, Intermediário e Avançado) de <strong style="color:var(--text)">${state.tema || temas[0]}</strong>.`;
+    const tema = state.tema || temas[0];
+    $("celebTitulo").textContent = "🏆 Mestre da Trilha!";
+    $("celebDesc").innerHTML = `Parabéns! Você dominou todos os 15 módulos (Fácil, Intermediário e Difícil) e conquistou o título de <strong>Mestre da Trilha</strong> em <strong style="color:var(--text)">${tema}</strong>! 🚀`;
     if ($("celebIcone")) $("celebIcone").textContent = "🏆";
     $("celebXP").textContent = state.xp;
     $("celebStreak").textContent = state.sequencia;
@@ -2612,6 +2673,7 @@
     som.fanfarra();
     chuvaConfete(220);
     setTimeout(() => confete(innerWidth / 2, innerHeight * 0.4, 100, 1.2), 250);
+    setTimeout(() => mostrarToast("🏆 Conquista desbloqueada: Mestre da Trilha!"), 700);
     setTimeout(() => $("btnFecharCelebracao").focus({ preventScroll: true }), 400);
   }
 
@@ -2657,6 +2719,7 @@
   }
 
   /* ---------- Inicialização ---------- */
+  embaralharTodasQuestoes();
   document.querySelectorAll(".bot-slot").forEach(el => { el.innerHTML = BOT_SVG; });
   atualizarBotaoSom();
   document.addEventListener("keydown", e => {
