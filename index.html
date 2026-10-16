@@ -176,6 +176,33 @@
     }
     .btn-trocar-trilha:hover { background: rgba(0, 240, 255, 0.2); }
     .btn-trocar-trilha:active { transform: scale(.96); }
+
+    /* ---------- Abas de Dificuldade / Unidades ---------- */
+    .unit-tabs {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 12px;
+    }
+    .unit-tab {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 10px 6px; border-radius: 14px; background: var(--surface);
+      border: 2px solid var(--edge); border-bottom-width: 4px; color: var(--muted); cursor: pointer;
+      transition: all .2s cubic-bezier(.3,1.3,.5,1); text-align: center;
+    }
+    .unit-tab:hover:not(.locked) { background: var(--surface2); border-color: var(--cyan); color: var(--text); }
+    .unit-tab:active:not(.locked) { transform: translateY(2px); border-bottom-width: 2px; }
+    .unit-tab.active {
+      background: linear-gradient(135deg, rgba(0,240,255,.14), rgba(17,25,46,.95));
+      border-color: var(--cyan); color: var(--cyan); box-shadow: 0 4px 14px rgba(0,240,255,.2);
+    }
+    .unit-tab.locked {
+      opacity: .6; cursor: not-allowed; border-color: #1a2236; background: #0f1524; filter: grayscale(.8);
+    }
+    .unit-tab .u-tag {
+      font-size: .62rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px;
+    }
+    .unit-tab .u-name {
+      font-size: .78rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+
     .board { position: relative; width: 300px; margin: 8px auto 0; }
     .board-path { position: absolute; left: 0; top: 0; overflow: visible; }
     .board-path path { fill: none; stroke-width: 10; stroke-linecap: round; stroke-dasharray: 1 22; }
@@ -407,12 +434,29 @@
     <section id="telaTrilha" class="screen">
       <div class="unit-banner">
         <div>
-          <p class="eyebrow">Unidade 1</p>
+          <p class="eyebrow" id="unitSubtitulo">Unidade 1 • Nível Fácil</p>
           <h1>Sua Trilha: <span id="nomeTemaTrilha"></span></h1>
           <button class="btn-trocar-trilha" onclick="trocarTrilha()">🔄 Trocar de tema</button>
         </div>
         <span class="unit-ico" id="unitIco" aria-hidden="true">🚀</span>
       </div>
+
+      <!-- Seletor de Unidades / Fases do Tabuleiro -->
+      <div class="unit-tabs" id="unitTabs">
+        <button class="unit-tab active" id="tabUnidade1" onclick="mudarUnidade(1)">
+          <span class="u-tag">NÍVEL 1</span>
+          <span class="u-name">🌱 Fácil (1-5)</span>
+        </button>
+        <button class="unit-tab locked" id="tabUnidade2" onclick="mudarUnidade(2)">
+          <span class="u-tag">NÍVEL 2</span>
+          <span class="u-name">⚡ Inter (6-10)</span>
+        </button>
+        <button class="unit-tab locked" id="tabUnidade3" onclick="mudarUnidade(3)">
+          <span class="u-tag">NÍVEL 3</span>
+          <span class="u-name">🔥 Difícil (11-15)</span>
+        </button>
+      </div>
+
       <div class="ai-box">
         <div class="bot-slot bot-xs" id="botTrilha" data-state="idle"></div>
         <p id="iaTrilha"></p>
@@ -466,7 +510,9 @@
       <h1>Conquistas</h1>
       <div class="badges">
         <div class="badge" id="badge1"><span class="b-ico">🏅</span>Primeira lição concluída</div>
-        <div class="badge" id="badge2"><span class="b-ico">🏆</span>Trilha concluída</div>
+        <div class="badge" id="badge2"><span class="b-ico">🌱</span>Nível Fácil dominado (5 lições)</div>
+        <div class="badge" id="badge3"><span class="b-ico">⚡</span>Nível Intermediário dominado (10 lições)</div>
+        <div class="badge" id="badge4"><span class="b-ico">🏆</span>Mestre da Trilha (15 lições)</div>
       </div>
     </section>
   </main>
@@ -491,10 +537,10 @@
   <div class="celebration-card">
     <div class="celeb-visual">
       <div class="bot-slot bot-lg" id="botCelebracao" data-state="star"></div>
-      <span class="trophy-big" aria-hidden="true">🏆</span>
+      <span class="trophy-big" id="celebIcone" aria-hidden="true">🏆</span>
     </div>
     <h2 id="celebTitulo">Trilha concluída!</h2>
-    <p>Você completou todos os módulos de <strong id="celebTema" style="color:var(--text)"></strong>.</p>
+    <p id="celebDesc">Você completou todos os módulos de <strong id="celebTema" style="color:var(--text)"></strong>.</p>
     <div class="celeb-stats">
       <div><span>⭐</span><strong id="celebXP">0</strong><small>XP total</small></div>
       <div><span>🔥</span><strong id="celebStreak">1</strong><small>dia(s)</small></div>
@@ -524,300 +570,1269 @@
     "Internet segura": "🛡️"
   };
 
-  // Trilhas temáticas completas (Nivelamento com 6 perguntas + 5 Módulos progressivos)
+  // Trilhas temáticas completas (Nivelamento com 6 perguntas + 15 Módulos em 3 Unidades: Fácil, Intermediário e Avançado)
   const trilhasPorTema = {
-    "Informática básica": {
-      nivelamento: [
-        { q: "Qual dispositivo é usado para apontar e clicar na tela do computador?", opts: ["Mouse", "Teclado", "Gabinete"], correta: 0 },
-        { q: "Qual atalho de teclado é amplamente utilizado para copiar arquivos ou textos?", opts: ["Ctrl + C", "Alt + F4", "Ctrl + Z"], correta: 0 },
-        { q: "O que é o Sistema Operacional (ex: Windows, Linux, macOS)?", opts: ["O software principal que gerencia o hardware e permite rodar outros programas", "Um tipo de cabo de rede de internet", "Um jogo instalado de fábrica"], correta: 0 },
-        { q: "Em uma planilha eletrônica (Excel/Sheets), como se inicia qualquer cálculo ou fórmula?", opts: ["Com o sinal de igual '='", "Com a palavra 'CALCULAR'", "Com dois pontos ':'"], correta: 0 },
-        { q: "Qual é a principal função da Memória RAM em um computador?", opts: ["Armazenar temporariamente dados dos programas em execução rápida", "Guardar fotos para sempre mesmo desligado", "Aumentar a velocidade da internet contratada"], correta: 0 },
-        { q: "O que é um arquivo compactado com extensão .zip ou .rar?", opts: ["Um pacote que reúne e reduz o tamanho de arquivos para facilitar o envio", "Um vírus que danifica o disco rígido", "Uma imagem em altíssima resolução"], correta: 0 }
-      ],
-      modulos: [
-        {
-          id: 1,
-          nome: "Módulo 1 (Fundamentos do PC)",
-          icone: "🖱️",
-          competencia: "Você domina peças do computador, periféricos e uso do mouse e teclado",
-          licao: {
-            pergunta: "Qual componente é considerado o 'cérebro' do computador, responsável por processar todas as instruções?",
-            opcoes: ["Processador (CPU)", "Monitor de vídeo", "Fonte de alimentação"],
-            correta: 0,
-            dica: "A CPU (Central Processing Unit) executa as operações lógicas e comandos de todos os programas."
-          }
-        },
-        {
-          id: 2,
-          nome: "Módulo 2 (Sistema e Pastas)",
-          icone: "📁",
-          competencia: "Você sabe organizar pastas, gerenciar arquivos e usar atalhos essenciais",
-          licao: {
-            pergunta: "Se você apagou um arquivo sem querer no computador, onde normalmente ele pode ser recuperado?",
-            opcoes: ["Lixeira", "Painel de Controle", "Placa de Vídeo"],
-            correta: 0,
-            dica: "Arquivos excluídos ficam guardados na Lixeira e podem ser restaurados antes do esvaziamento."
-          }
-        },
-        {
-          id: 3,
-          nome: "Módulo 3 (Documentos & Textos)",
-          icone: "📝",
-          competencia: "Você sabe formatar textos, criar cabeçalhos e salvar documentos profissionais",
-          licao: {
-            pergunta: "Qual formato é o mais recomendado para enviar um documento garantindo que a formatação não mude em nenhum aparelho?",
-            opcoes: ["PDF (.pdf)", "Bloco de Notas (.txt)", "Arquivo temporário (.tmp)"],
-            correta: 0,
-            dica: "O formato PDF preserva fontes, imagens e alinhamento exatamente como foram criados."
-          }
-        },
-        {
-          id: 4,
-          nome: "Módulo 4 (Planilhas Inteligentes)",
-          icone: "📊",
-          competencia: "Você já sabe criar fórmulas, somar colunas e gerar gráficos no Excel",
-          licao: {
-            pergunta: "Qual fórmula calcula automaticamente a média dos valores das células B2 até B10 no Excel?",
-            opcoes: ["=MÉDIA(B2:B10)", "=DIVIDIR(B2:B10)", "=CONTAR(B2+B10)"],
-            correta: 0,
-            dica: "A fórmula =MÉDIA(início:fim) soma todos os valores do intervalo e divide pela quantidade."
-          }
-        },
-        {
-          id: 5,
-          nome: "Módulo 5 (Backup e Nuvem)",
-          icone: "☁️",
-          competencia: "Você sabe proteger seus dados com backup sincronizado em nuvem e segurança de armazenamento",
-          licao: {
-            pergunta: "Qual a maior vantagem de armazenar arquivos na nuvem (como Google Drive, OneDrive) em vez de apenas no pendrive?",
-            opcoes: ["Acesso de qualquer lugar com internet e proteção contra perda física do aparelho", "Não precisar de senha de acesso", "Fazer o computador ligar mais rápido"],
-            correta: 0,
-            dica: "A nuvem salva cópias em servidores remotos seguros, protegendo seus arquivos caso seu computador quebre."
-          }
+  "Informática básica": {
+    "nivelamento": [
+      {
+        "q": "Qual dispositivo é usado para apontar e clicar na tela do computador?",
+        "opts": [
+          "Mouse",
+          "Teclado",
+          "Gabinete"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Qual atalho de teclado é amplamente utilizado para copiar arquivos ou textos?",
+        "opts": [
+          "Ctrl + C",
+          "Alt + F4",
+          "Ctrl + Z"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é o Sistema Operacional (ex: Windows, Linux, macOS)?",
+        "opts": [
+          "O software principal que gerencia o hardware e permite rodar outros programas",
+          "Um tipo de cabo de rede de internet",
+          "Um jogo instalado de fábrica"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Em uma planilha eletrônica (Excel/Sheets), como se inicia qualquer cálculo ou fórmula?",
+        "opts": [
+          "Com o sinal de igual '='",
+          "Com a palavra 'CALCULAR'",
+          "Com dois pontos ':'"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Qual é a principal função da Memória RAM em um computador?",
+        "opts": [
+          "Armazenar temporariamente dados dos programas em execução rápida",
+          "Guardar fotos para sempre mesmo desligado",
+          "Aumentar a velocidade da internet contratada"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é um arquivo compactado com extensão .zip ou .rar?",
+        "opts": [
+          "Um pacote que reúne e reduz o tamanho de arquivos para facilitar o envio",
+          "Um vírus que danifica o disco rígido",
+          "Uma imagem em altíssima resolução"
+        ],
+        "correta": 0
+      }
+    ],
+    "modulos": [
+      {
+        "id": 1,
+        "nivel": 1,
+        "nome": "Módulo 1 (Fundamentos do PC)",
+        "icone": "🖱️",
+        "competencia": "Você domina peças do computador, periféricos e uso do mouse e teclado",
+        "licao": {
+          "pergunta": "Qual componente é considerado o 'cérebro' do computador, responsável por processar todas as instruções?",
+          "opcoes": [
+            "Processador (CPU)",
+            "Monitor de vídeo",
+            "Fonte de alimentação"
+          ],
+          "correta": 0,
+          "dica": "A CPU (Central Processing Unit) executa as operações lógicas e comandos de todos os programas."
         }
-      ]
-    },
-
-    "Uso do celular": {
-      nivelamento: [
-        { q: "Quais são os dois principais sistemas operacionais móveis do mercado atual?", opts: ["Android e iOS", "Windows e macOS", "Linux e DOS"], correta: 0 },
-        { q: "Onde os usuários de Android e iPhone normalmente baixam aplicativos oficiais?", opts: ["Google Play Store e Apple App Store", "Pelo Painel de Controle", "Por mensagem de texto SMS"], correta: 0 },
-        { q: "O que é um aplicativo mobile híbrido ou cross-platform?", opts: ["Um app com código único que roda tanto em Android quanto em iOS", "Um app que só funciona conectado na tomada", "Um app feito exclusivamente para relógios"], correta: 0 },
-        { q: "Qual linguagem e framework são muito populares para criar apps mobile para iOS e Android simultaneamente?", opts: ["Dart com Flutter (ou JS com React Native)", "HTML puro no Bloco de Notas", "C++ clássico para navegador"], correta: 0 },
-        { q: "Para que serve a tela de permissões quando um app pede acesso à câmera ou GPS?", opts: ["Garantir a privacidade do usuário, liberando hardware apenas com autorização", "Aumentar a resolução da tela do celular", "Instalar vírus no aparelho"], correta: 0 },
-        { q: "O que é uma API REST no contexto de um aplicativo mobile?", opts: ["Uma ponte de comunicação que permite o app no celular trocar dados com o servidor na nuvem", "O botão físico de volume do celular", "A tela de toque sensível aos dedos"], correta: 0 }
-      ],
-      modulos: [
-        {
-          id: 1,
-          nome: "Módulo 1 (Design Mobile & Telas)",
-          icone: "📱",
-          competencia: "Você entende o ecossistema mobile, telas de toque e design responsivo",
-          licao: {
-            pergunta: "O que significa 'Design Responsivo' no desenvolvimento de telas de aplicativos?",
-            opcoes: ["Adaptar o layout para que fique perfeito em diferentes tamanhos e orientações de tela", "Fazer o celular vibrar quando o botão for clicado", "Exigir que o usuário compre um celular novo"],
-            correta: 0,
-            dica: "Telas responsivas se reorganizam com elegância em qualquer tamanho de smartphone ou tablet."
-          }
-        },
-        {
-          id: 2,
-          nome: "Módulo 2 (Nativo vs Cross-Platform)",
-          icone: "⚛️",
-          competencia: "Você sabe a diferença entre apps nativos (Kotlin/Swift) e cross-platform (React Native/Flutter)",
-          licao: {
-            pergunta: "Se uma equipe precisa lançar um app rapidamente para Android e iOS usando uma base comum em JavaScript, qual tecnologia é ideal?",
-            opcoes: ["React Native", "Excel VBA", "Photoshop Mobile"],
-            correta: 0,
-            dica: "React Native permite construir apps para iOS e Android usando JavaScript e a filosofia do React."
-          }
-        },
-        {
-          id: 3,
-          nome: "Módulo 3 (Consumo de APIs & JSON)",
-          icone: "🔄",
-          competencia: "Você sabe integrar o aplicativo com servidores externos usando JSON e requisições HTTP",
-          licao: {
-            pergunta: "Qual formato de dados leve, em formato chave-valor, é o padrão mais usado para o app mobile conversar com a nuvem?",
-            opcoes: ["JSON", "Arquivo BMP de imagem", "Documento DOCX"],
-            correta: 0,
-            dica: "JSON (JavaScript Object Notation) é universal, legível e leve para trafegar dados em redes móveis."
-          }
-        },
-        {
-          id: 4,
-          nome: "Módulo 4 (Armazenamento & Push)",
-          icone: "🔔",
-          competencia: "Você domina notificações Push e persistência de dados local (AsyncStorage/SQLite)",
-          licao: {
-            pergunta: "Qual recurso permite que um aplicativo avise o usuário sobre uma nova mensagem mesmo quando o app está fechado?",
-            opcoes: ["Notificação Push (Push Notification)", "Bluetooth sempre ligado", "Reinicialização forçada do celular"],
-            correta: 0,
-            dica: "Serviços como Firebase Cloud Messaging (FCM) e Apple APNs entregam notificações em segundo plano."
-          }
-        },
-        {
-          id: 5,
-          nome: "Módulo 5 (Build & Publicação)",
-          icone: "🚀",
-          competencia: "Você sabe gerar pacotes (AAB, IPA), assinar certificados e publicar na Google Play e App Store",
-          licao: {
-            pergunta: "Qual formato moderno do Google é obrigatório para publicar apps na Google Play, otimizando o tamanho do download para cada aparelho?",
-            opcoes: ["Android App Bundle (.aab)", "Arquivo de texto (.txt)", "Arquivo executável do Windows (.exe)"],
-            correta: 0,
-            dica: "O .aab permite que a loja gere pacotes sob medida com apenas os recursos necessários para o aparelho do usuário."
-          }
+      },
+      {
+        "id": 2,
+        "nivel": 1,
+        "nome": "Módulo 2 (Sistema e Pastas)",
+        "icone": "📁",
+        "competencia": "Você sabe organizar pastas, gerenciar arquivos e usar atalhos essenciais",
+        "licao": {
+          "pergunta": "Se você apagou um arquivo sem querer no computador, onde normalmente ele pode ser recuperado?",
+          "opcoes": [
+            "Lixeira",
+            "Painel de Controle",
+            "Placa de Vídeo"
+          ],
+          "correta": 0,
+          "dica": "Arquivos excluídos ficam guardados na Lixeira e podem ser restaurados antes do esvaziamento."
         }
-      ]
-    },
-
-    "Ferramentas de trabalho": {
-      nivelamento: [
-        { q: "Qual é o editor de código mais popular do mundo, desenvolvido pela Microsoft?", opts: ["Visual Studio Code (VS Code)", "Bloco de Notas", "Microsoft Paint"], correta: 0 },
-        { q: "Para que serve a ferramenta Git no dia a dia do desenvolvedor?", opts: ["Controlar versões e histórico de alterações do código-fonte", "Tirar print da tela do computador", "Limpar a poeira do teclado"], correta: 0 },
-        { q: "Qual é a principal plataforma em nuvem para hospedar repositórios Git e colaborar em equipe?", opts: ["GitHub", "Instagram", "Spotify"], correta: 0 },
-        { q: "Para que os desenvolvedores utilizam o Terminal ou Prompt de Comando?", opts: ["Executar comandos diretos, scripts e gerenciar servidores com rapidez", "Trocar o papel de parede", "Apenas para ver filmes"], correta: 0 },
-        { q: "Qual ferramenta é mundialmente usada para testar e documentar requisições para APIs REST?", opts: ["Postman", "WinRAR", "Windows Media Player"], correta: 0 },
-        { q: "O que é o Docker no ambiente de desenvolvimento?", opts: ["Uma plataforma de contêineres que empacota o app e suas dependências para rodar igual em qualquer lugar", "Um antivírus para computador", "Um teclado mecânico especial"], correta: 0 }
-      ],
-      modulos: [
-        {
-          id: 1,
-          nome: "Módulo 1 (VS Code & Produtividade)",
-          icone: "💻",
-          competencia: "Você domina o VS Code, extensões, atalhos de depuração e terminal integrado",
-          licao: {
-            pergunta: "Qual atalho no VS Code abre rapidamente a paleta de comandos para buscar arquivos e ações?",
-            opcoes: ["Ctrl + Shift + P (ou Cmd+Shift+P)", "Ctrl + Alt + Del", "Tecla F13"],
-            correta: 0,
-            dica: "O Command Palette (Ctrl+Shift+P) é o coração da produtividade e comandos rápidos no VS Code."
-          }
-        },
-        {
-          id: 2,
-          nome: "Módulo 2 (Git: Commits & Branches)",
-          icone: "🌿",
-          competencia: "Você sabe versionar projetos, criar branches e salvar commits com boas mensagens",
-          licao: {
-            pergunta: "Qual comando do Git envia suas alterações e commits locais para o repositório remoto no GitHub?",
-            opcoes: ["git push", "git delete", "git download"],
-            correta: 0,
-            dica: "O comando 'git push' empurra os commits do seu computador para o servidor remoto."
-          }
-        },
-        {
-          id: 3,
-          nome: "Módulo 3 (GitHub & Pull Requests)",
-          icone: "🐙",
-          competencia: "Você sabe trabalhar em equipe com Pull Requests, Code Review e resolução de conflitos",
-          licao: {
-            pergunta: "No GitHub, o que é um Pull Request (PR)?",
-            opcoes: ["Uma proposta para revisar e mesclar alterações de uma branch para a branch principal", "Um pedido para excluir o repositório", "Uma cobrança de mensalidade da equipe"],
-            correta: 0,
-            dica: "O Pull Request permite que outros desenvolvedores revisem seu código antes dele ser incorporado ao projeto."
-          }
-        },
-        {
-          id: 4,
-          nome: "Módulo 4 (Testes de APIs no Postman)",
-          icone: "📬",
-          competencia: "Você sabe testar endpoints HTTP, verificar status codes (200, 404, 500) e automatizar chamadas",
-          licao: {
-            pergunta: "Qual método HTTP no Postman é usado convencionalmente para criar um novo registro no servidor?",
-            opcoes: ["POST", "GET", "DELETE"],
-            correta: 0,
-            dica: "POST envia dados no corpo da requisição para cadastrar novos recursos na API."
-          }
-        },
-        {
-          id: 5,
-          nome: "Módulo 5 (Docker & Contêineres)",
-          icone: "🐳",
-          competencia: "Você sabe criar Dockerfiles, subir contêineres e garantir ambientes padronizados",
-          licao: {
-            pergunta: "Qual o principal benefício de rodar sua aplicação dentro de um contêiner Docker?",
-            opcoes: ["Garantir que a aplicação funcione exatamente igual no computador do dev e no servidor em produção", "Fazer o código rodar sem eletricidade", "Eliminar a necessidade de escrever testes"],
-            correta: 0,
-            dica: "Contêineres empacotam código, bibliotecas e ambiente do sistema, eliminando o clássico 'na minha máquina funciona'."
-          }
+      },
+      {
+        "id": 3,
+        "nivel": 1,
+        "nome": "Módulo 3 (Documentos & Textos)",
+        "icone": "📝",
+        "competencia": "Você sabe formatar textos, criar cabeçalhos e salvar documentos profissionais",
+        "licao": {
+          "pergunta": "Qual formato é o mais recomendado para enviar um documento garantindo que a formatação não mude em nenhum aparelho?",
+          "opcoes": [
+            "PDF (.pdf)",
+            "Bloco de Notas (.txt)",
+            "Arquivo temporário (.tmp)"
+          ],
+          "correta": 0,
+          "dica": "O formato PDF preserva fontes, imagens e alinhamento exatamente como foram criados."
         }
-      ]
-    },
-
-    "Internet segura": {
-      nivelamento: [
-        { q: "O que você deve fazer ao receber um e-mail urgente de um banco pedindo para clicar em um link e digitar sua senha?", opts: ["Desconfiar de golpe (phishing) e nunca clicar no link", "Clicar rápido e digitar a senha solicitada", "Encaminhar para todos os contatos"], correta: 0 },
-        { q: "Qual é a recomendação essencial para criar senhas fortes e seguras?", opts: ["Usar frases longas misturando letras maiúsculas, minúsculas, números e símbolos", "Usar '123456' em todos os sites", "Colocar apenas o ano de nascimento"], correta: 0 },
-        { q: "O que é a Autenticação em Dois Fatores (2FA / MFA)?", opts: ["Uma camada extra de segurança que pede uma confirmação adicional (código no celular) além da senha", "Ter que digitar a mesma senha duas vezes seguidas", "Ter duas contas no mesmo site"], correta: 0 },
-        { q: "O que significa o cadeado fechado e o 'https://' no endereço de um site?", opts: ["A comunicação entre seu navegador e o site é criptografada e protegida contra interceptação", "O site é imune a qualquer vírus do mundo", "O site pertence ao governo federal"], correta: 0 },
-        { q: "O que é um ataque de Engenharia Social no contexto de cibersegurança?", opts: ["Manipular psicologicamente pessoas para que elas forneçam senhas ou dados confidenciais voluntariamente", "Construir pontes pela internet", "Consertar redes sociais com problemas técnicos"], correta: 0 },
-        { q: "O que é um ataque DDoS (Distributed Denial of Service)?", opts: ["Sobrecarga intencional de um servidor com tráfego maciço de computadores para derrubar o serviço", "Roubar a senha do Wi-Fi de um vizinho", "Apagar o disco rígido remotamente"], correta: 0 }
-      ],
-      modulos: [
-        {
-          id: 1,
-          nome: "Módulo 1 (Senhas & Higiene Digital)",
-          icone: "🔑",
-          competencia: "Você sabe criar senhas blindadas, usar gerenciadores de senhas e evitar reutilização",
-          licao: {
-            pergunta: "Por que nunca devemos usar a mesma senha em vários sites diferentes?",
-            opcoes: ["Se um dos sites sofrer vazamento de dados, os invasores terão acesso a todas as suas outras contas", "Porque o navegador de internet não permite", "Porque gasta mais memória do computador"],
-            correta: 0,
-            dica: "Invasores usam listas de senhas vazadas para tentar invadir e-mail, redes sociais e bancos (Credential Stuffing)."
-          }
-        },
-        {
-          id: 2,
-          nome: "Módulo 2 (Defesa contra Phishing)",
-          icone: "🎣",
-          competencia: "Você identifica e-mails, SMS e links fraudulentos antes de cair em armadilhas",
-          licao: {
-            pergunta: "Qual é um sinal clássico de uma mensagem de Phishing (golpe digital)?",
-            opcoes: ["Senso de urgência exagerado, erros de português e links para domínios estranhos", "Mensagens enviadas sem nenhuma imagem anexada", "E-mails que chegam em horário comercial"],
-            correta: 0,
-            dica: "Golpistas apelam para o medo e a urgência ('sua conta será bloqueada em 1 hora') para fazer você agir por impulso."
-          }
-        },
-        {
-          id: 3,
-          nome: "Módulo 3 (MFA & Criptografia)",
-          icone: "🔒",
-          competencia: "Você domina chaves de segurança, aplicativos autenticadores (TOTP) e criptografia de ponta a ponta",
-          licao: {
-            pergunta: "Qual método de Autenticação em Dois Fatores (2FA) é mais seguro contra clonagem de chip (SIM Swap)?",
-            opcoes: ["Aplicativos autenticadores (como Google Authenticator) ou chaves físicas (Passkeys)", "SMS tradicional com código de 4 dígitos", "Ligação telefônica aberta"],
-            correta: 0,
-            dica: "O código gerado no app fica salvo localmente no seu dispositivo e não pode ser interceptado por clonagem de linha telefônica."
-          }
-        },
-        {
-          id: 4,
-          nome: "Módulo 4 (Wi-Fi Público & VPN)",
-          icone: "🛡️",
-          competencia: "Você sabe se proteger em redes Wi-Fi públicas, usar VPNs confiáveis e configurar navegadores",
-          licao: {
-            pergunta: "Qual o maior perigo ao conectar em um Wi-Fi público e aberto (sem senha) em cafés ou aeroportos?",
-            opcoes: ["Outras pessoas na mesma rede podem interceptar dados não criptografados (ataque Man-in-the-Middle)", "Seu celular desligar a bateria instantaneamente", "O café cobrar mais caro na sua conta"],
-            correta: 0,
-            dica: "Em redes abertas sem proteção, qualquer pessoa com ferramentas simples pode farejar o tráfego da rede."
-          }
-        },
-        {
-          id: 5,
-          nome: "Módulo 5 (Zero Trust & Resposta a Incidentes)",
-          icone: "🕵️",
-          competencia: "Você entende conceitos de Zero Trust, Firewalls, defesa em profundidade e segurança corporativa",
-          licao: {
-            pergunta: "Qual é o princípio fundamental da arquitetura de segurança 'Zero Trust' adotada pelas maiores empresas de tecnologia?",
-            opcoes: ["'Nunca confie, sempre verifique': todo acesso interno ou externo deve ser autenticado e validado continuamente", "Confiar cegamente em quem já está conectado dentro do escritório", "Desligar os firewalls para agilizar os acessos"],
-            correta: 0,
-            dica: "No modelo Zero Trust, mesmo dentro da rede da empresa, cada solicitação é tratada como se viesse de uma rede aberta e hostil."
-          }
+      },
+      {
+        "id": 4,
+        "nivel": 1,
+        "nome": "Módulo 4 (Navegação Web)",
+        "icone": "🌐",
+        "competencia": "Você domina navegadores, navegação por abas e organização de favoritos",
+        "licao": {
+          "pergunta": "Qual recurso dos navegadores (como Chrome ou Edge) permite salvar uma página interessante para encontrá-la rapidamente depois?",
+          "opcoes": [
+            "Favoritos (Bookmarks)",
+            "Histórico de downloads",
+            "Modo de navegação anônima temporária"
+          ],
+          "correta": 0,
+          "dica": "Adicionar aos Favoritos cria um atalho permanente de fácil acesso na barra do navegador."
         }
-      ]
-    }
-  };
+      },
+      {
+        "id": 5,
+        "nivel": 1,
+        "nome": "Módulo 5 (Atalhos Essenciais)",
+        "icone": "⚡",
+        "competencia": "Você utiliza atalhos de teclado para acelerar suas tarefas diárias no computador",
+        "licao": {
+          "pergunta": "Quais são os dois atalhos de teclado mais famosos do mundo para 'copiar' e 'colar' textos ou itens?",
+          "opcoes": [
+            "Ctrl + C e Ctrl + V",
+            "Ctrl + Z e Ctrl + Y",
+            "Alt + F4 e Enter"
+          ],
+          "correta": 0,
+          "dica": "Ctrl + C copia o item para a área de transferência e Ctrl + V o cola no local desejado."
+        }
+      },
+      {
+        "id": 6,
+        "nivel": 2,
+        "nome": "Módulo 6 (RAM vs Armazenamento)",
+        "icone": "💾",
+        "competencia": "Você entende o papel da memória volátil e a velocidade de unidades SSD",
+        "licao": {
+          "pergunta": "Qual é a principal diferença prática entre a Memória RAM e a unidade de armazenamento (SSD/HD)?",
+          "opcoes": [
+            "A RAM é ultrarrápida e volátil (apaga ao desligar), enquanto o SSD guarda arquivos permanentemente",
+            "A RAM serve apenas para conectar fones de ouvido sem fio",
+            "O SSD apaga todos os dados sozinho toda vez que o computador reinicia"
+          ],
+          "correta": 0,
+          "dica": "A RAM armazena o que os programas em execução precisam no momento; ao desligar, ela é limpa."
+        }
+      },
+      {
+        "id": 7,
+        "nivel": 2,
+        "nome": "Módulo 7 (Planilhas Inteligentes)",
+        "icone": "📊",
+        "competencia": "Você já sabe criar fórmulas, somar colunas e gerar cálculos no Excel e Google Sheets",
+        "licao": {
+          "pergunta": "Qual fórmula calcula automaticamente a média aritmética dos valores das células B2 até B10 no Excel?",
+          "opcoes": [
+            "=MÉDIA(B2:B10)",
+            "=DIVIDIR(B2:B10)",
+            "=CONTAR(B2+B10)"
+          ],
+          "correta": 0,
+          "dica": "A fórmula =MÉDIA(início:fim) soma todos os valores do intervalo e divide pela quantidade de células."
+        }
+      },
+      {
+        "id": 8,
+        "nivel": 2,
+        "nome": "Módulo 8 (Compactação de Arquivos)",
+        "icone": "📦",
+        "competencia": "Você sabe compactar e descompactar arquivos (.zip/.rar) para envio e economia de espaço",
+        "licao": {
+          "pergunta": "Por que usamos compactadores de arquivos (gerando pacotes .zip ou .rar) antes de enviar anexos por e-mail?",
+          "opcoes": [
+            "Para agrupar múltiplos arquivos em um só pacote e reduzir o tamanho total de transferência",
+            "Para converter textos em programas de computador",
+            "Para impedir que os arquivos sejam abertos no futuro"
+          ],
+          "correta": 0,
+          "dica": "Compactar arquivos reúne pastas inteiras e utiliza algoritmos para comprimir dados repetitivos."
+        }
+      },
+      {
+        "id": 9,
+        "nivel": 2,
+        "nome": "Módulo 9 (Gerenciador de Tarefas)",
+        "icone": "🛠️",
+        "competencia": "Você sabe diagnosticar consumo de CPU/memória e encerrar programas travados com segurança",
+        "licao": {
+          "pergunta": "Se um programa travar e congelar na tela sem responder, qual ferramenta do sistema permite forçar o encerramento do processo com segurança?",
+          "opcoes": [
+            "Gerenciador de Tarefas (Ctrl + Shift + Esc)",
+            "Calculadora do Windows",
+            "Configurações de som e alto-falante"
+          ],
+          "correta": 0,
+          "dica": "O Gerenciador de Tarefas lista todos os processos ativos e permite 'Finalizar Tarefa' de programas travados."
+        }
+      },
+      {
+        "id": 10,
+        "nivel": 2,
+        "nome": "Módulo 10 (Backup e Nuvem)",
+        "icone": "☁️",
+        "competencia": "Você sabe proteger seus dados com backup sincronizado em nuvem e segurança de armazenamento",
+        "licao": {
+          "pergunta": "Qual a maior vantagem de armazenar arquivos na nuvem (Google Drive, OneDrive) em vez de apenas no pendrive?",
+          "opcoes": [
+            "Acesso de qualquer lugar com internet e proteção contra perda física do aparelho",
+            "Não precisar de senha de acesso",
+            "Fazer o computador ligar mais rápido"
+          ],
+          "correta": 0,
+          "dica": "A nuvem salva cópias em servidores remotos seguros, protegendo seus arquivos caso seu computador quebre."
+        }
+      },
+      {
+        "id": 11,
+        "nivel": 3,
+        "nome": "Módulo 11 (Redes, IP & DNS)",
+        "icone": "📡",
+        "competencia": "Você compreende a resolução de nomes por DNS e endereçamento IP em redes locais e na internet",
+        "licao": {
+          "pergunta": "Qual é o papel do servidor DNS (Domain Name System) quando você digita 'www.aprendia.com' no seu navegador?",
+          "opcoes": [
+            "Traduzir o nome amigável do site para o endereço IP numérico do servidor de destino",
+            "Aumentar a velocidade da placa de vídeo do computador",
+            "Instalar os navegadores compatíveis no sistema operacional"
+          ],
+          "correta": 0,
+          "dica": "O DNS funciona como a 'agenda telefônica' da internet, associando domínios legíveis a IPs numéricos de servidores."
+        }
+      },
+      {
+        "id": 12,
+        "nivel": 3,
+        "nome": "Módulo 12 (Prompt & Linha de Comando)",
+        "icone": "💻",
+        "competencia": "Você sabe utilizar comandos essenciais de terminal para diagnóstico de rede e sistema",
+        "licao": {
+          "pergunta": "Qual comando de terminal é utilizado para testar a conectividade de rede e a latência de resposta com um servidor remoto?",
+          "opcoes": [
+            "ping (ex: ping google.com)",
+            "format c:",
+            "copy pasta"
+          ],
+          "correta": 0,
+          "dica": "O comando 'ping' envia pacotes de teste ICMP e mede o tempo de resposta em milissegundos."
+        }
+      },
+      {
+        "id": 13,
+        "nivel": 3,
+        "nome": "Módulo 13 (USB-C & Conectividade)",
+        "icone": "🔌",
+        "competencia": "Você entende padrões modernos de conectividade, barramentos Thunderbolt e taxas de transferência",
+        "licao": {
+          "pergunta": "Por que o padrão USB-C com suporte a Thunderbolt se tornou a conexão mais avançada em computadores modernos?",
+          "opcoes": [
+            "Porque transmite simultaneamente dados em altíssima velocidade, sinal de vídeo de alta resolução e energia para carregamento",
+            "Porque funciona exclusivamente com o computador desligado",
+            "Porque dispensa a necessidade de ter memória RAM instalada"
+          ],
+          "correta": 0,
+          "dica": "Thunderbolt sobre USB-C atinge até 40 Gbps e unifica carregamento rápido, monitores externos e periféricos em um só cabo."
+        }
+      },
+      {
+        "id": 14,
+        "nivel": 3,
+        "nome": "Módulo 14 (Firewall & Segurança do SO)",
+        "icone": "🧱",
+        "competencia": "Você configura firewalls, gerencia portas de rede e monitora patches de segurança do sistema",
+        "licao": {
+          "pergunta": "Qual é a função central do Firewall de rede ativo no sistema operacional?",
+          "opcoes": [
+            "Filtrar e monitorar o tráfego de rede de entrada e saída, bloqueando conexões não autorizadas ou suspeitas",
+            "Aumentar o brilho e o contraste do monitor",
+            "Limpar a poeira das ventoinhas do computador"
+          ],
+          "correta": 0,
+          "dica": "O Firewall inspeciona pacotes e portas de rede, impedindo tentativas de conexão externa maliciosa."
+        }
+      },
+      {
+        "id": 15,
+        "nivel": 3,
+        "nome": "Módulo 15 (Diagnóstico S.M.A.R.T. & Hardware)",
+        "icone": "🔬",
+        "competencia": "Você é capaz de auditar a saúde de discos, diagnosticar falhas de hardware e otimizar o desempenho do PC",
+        "licao": {
+          "pergunta": "Qual tecnologia integrada aos discos SSD e HDs modernos monitora indicadores de integridade física e previne perda de dados avisando sobre falhas?",
+          "opcoes": [
+            "S.M.A.R.T. (Self-Monitoring, Analysis and Reporting Technology)",
+            "Overclocking automático de memória",
+            "Plano de energia de alta performance"
+          ],
+          "correta": 0,
+          "dica": "Os atributos S.M.A.R.T. acompanham setores defeituosos, temperatura e desgaste das células flash antes que o disco pare de funcionar."
+        }
+      }
+    ]
+  },
+  "Uso do celular": {
+    "nivelamento": [
+      {
+        "q": "Quais são os dois principais sistemas operacionais móveis do mercado atual?",
+        "opts": [
+          "Android e iOS",
+          "Windows e macOS",
+          "Linux e DOS"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Onde os usuários de Android e iPhone normalmente baixam aplicativos oficiais?",
+        "opts": [
+          "Google Play Store e Apple App Store",
+          "Pelo Painel de Controle",
+          "Por mensagem de texto SMS"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é um aplicativo mobile híbrido ou cross-platform?",
+        "opts": [
+          "Um app com código único que roda tanto em Android quanto em iOS",
+          "Um app que só funciona conectado na tomada",
+          "Um app feito exclusivamente para relógios"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Qual linguagem e framework são muito populares para criar apps mobile para iOS e Android simultaneamente?",
+        "opts": [
+          "Dart com Flutter (ou JS com React Native)",
+          "HTML puro no Bloco de Notas",
+          "C++ clássico para navegador"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Para que serve a tela de permissões quando um app pede acesso à câmera ou GPS?",
+        "opts": [
+          "Garantir a privacidade do usuário, liberando hardware apenas com autorização",
+          "Aumentar a resolução da tela do celular",
+          "Instalar vírus no aparelho"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é uma API REST no contexto de um aplicativo mobile?",
+        "opts": [
+          "Uma ponte de comunicação que permite o app no celular trocar dados com o servidor na nuvem",
+          "O botão físico de volume do celular",
+          "A tela de toque sensível aos dedos"
+        ],
+        "correta": 0
+      }
+    ],
+    "modulos": [
+      {
+        "id": 1,
+        "nivel": 1,
+        "nome": "Módulo 1 (Design Mobile & Telas)",
+        "icone": "📱",
+        "competencia": "Você entende o ecossistema mobile, telas de toque e design responsivo",
+        "licao": {
+          "pergunta": "O que significa 'Design Responsivo' no desenvolvimento de interfaces de aplicativos?",
+          "opcoes": [
+            "Adaptar o layout para que fique perfeito em diferentes tamanhos e orientações de tela",
+            "Fazer o celular vibrar quando o botão for clicado",
+            "Exigir que o usuário compre um celular novo"
+          ],
+          "correta": 0,
+          "dica": "Telas responsivas se reorganizam com elegância em qualquer tamanho de smartphone ou tablet."
+        }
+      },
+      {
+        "id": 2,
+        "nivel": 1,
+        "nome": "Módulo 2 (Lojas & Distribuição)",
+        "icone": "🛍️",
+        "competencia": "Você conhece o ecossistema das lojas de apps (Google Play e Apple App Store)",
+        "licao": {
+          "pergunta": "Onde os desenvolvedores publicam seus aplicativos oficiais para alcançar os usuários de Android e iPhone?",
+          "opcoes": [
+            "Google Play Store e Apple App Store",
+            "No Painel de Controle do Windows",
+            "Enviando por SMS individual para cada usuário"
+          ],
+          "correta": 0,
+          "dica": "Play Store e App Store são os canais oficiais centralizados de distribuição, verificação e atualização de apps."
+        }
+      },
+      {
+        "id": 3,
+        "nivel": 1,
+        "nome": "Módulo 3 (Permissões & Privacidade)",
+        "icone": "🛡️",
+        "competencia": "Você sabe gerenciar pedidos de permissão de câmera, microfone e localização em tempo de execução",
+        "licao": {
+          "pergunta": "Por que os sistemas móveis modernos exigem que o app solicite permissão em tempo de execução para acessar câmera ou localização?",
+          "opcoes": [
+            "Para garantir a privacidade e consentimento do usuário antes de acessar sensores sensíveis",
+            "Para economizar o papel de parede do celular",
+            "Para deixar o processamento do app mais lento"
+          ],
+          "correta": 0,
+          "dica": "Pedir autorização sob demanda garante transparência e segurança contra coleta oculta de dados pessoais."
+        }
+      },
+      {
+        "id": 4,
+        "nivel": 1,
+        "nome": "Módulo 4 (Listas & Componentes de UI)",
+        "icone": "📋",
+        "competencia": "Você domina o uso de listas de rolagem eficientes e botões ergonômicos no celular",
+        "licao": {
+          "pergunta": "Qual componente de interface é ideal para exibir uma lista com centenas de itens sem travar a rolagem do celular?",
+          "opcoes": [
+            "Listas virtualizadas com reciclagem de visualização (ex: FlatList ou RecyclerView)",
+            "Carregar todas as centenas de imagens de uma vez na tela",
+            "Colocar cada item em uma página separada sem rolagem"
+          ],
+          "correta": 0,
+          "dica": "Componentes virtualizados só renderizam os itens visíveis na tela, economizando memória RAM do aparelho."
+        }
+      },
+      {
+        "id": 5,
+        "nivel": 1,
+        "nome": "Módulo 5 (Consumo de Bateria)",
+        "icone": "🔋",
+        "competencia": "Você sabe otimizar o aplicativo para economizar bateria e tráfego de dados móveis",
+        "licao": {
+          "pergunta": "Qual prática de desenvolvimento evita que um aplicativo drene rapidamente a bateria do smartphone do usuário?",
+          "opcoes": [
+            "Pausar tarefas pesadas e leituras constantes de GPS quando o app for minimizado para segundo plano",
+            "Deixar a tela ligada no brilho máximo o tempo todo",
+            "Fazer requisições ao servidor a cada 1 segundo sem necessidade"
+          ],
+          "correta": 0,
+          "dica": "Suspender sensores e sincronizações desnecessárias em background preserva a autonomia da bateria."
+        }
+      },
+      {
+        "id": 6,
+        "nivel": 2,
+        "nome": "Módulo 6 (Nativo vs Cross-Platform)",
+        "icone": "⚛️",
+        "competencia": "Você sabe a diferença entre apps nativos (Kotlin/Swift) e cross-platform (React Native/Flutter)",
+        "licao": {
+          "pergunta": "Se uma equipe precisa lançar um app rapidamente para Android e iOS usando uma base comum em JavaScript ou Dart, qual tecnologia é ideal?",
+          "opcoes": [
+            "React Native ou Flutter",
+            "Excel VBA com macros",
+            "Photoshop Mobile"
+          ],
+          "correta": 0,
+          "dica": "React Native e Flutter compilam código único em componentes nativos de alto desempenho para ambas as plataformas."
+        }
+      },
+      {
+        "id": 7,
+        "nivel": 2,
+        "nome": "Módulo 7 (Consumo de APIs & JSON)",
+        "icone": "🔄",
+        "competencia": "Você sabe integrar o aplicativo com servidores externos usando JSON e requisições HTTP",
+        "licao": {
+          "pergunta": "Qual formato de dados leve, estruturado em chave-valor, é o padrão universal para o app mobile conversar com a nuvem?",
+          "opcoes": [
+            "JSON (JavaScript Object Notation)",
+            "Arquivo BMP de imagem sem compressão",
+            "Documento DOCX"
+          ],
+          "correta": 0,
+          "dica": "JSON é leve, universalmente interpretado e ideal para redes móveis onde economia de banda importa."
+        }
+      },
+      {
+        "id": 8,
+        "nivel": 2,
+        "nome": "Módulo 8 (Armazenamento Local)",
+        "icone": "🗄️",
+        "competencia": "Você domina persistência local com AsyncStorage, SQLite e SharedPreferences no mobile",
+        "licao": {
+          "pergunta": "Onde um aplicativo mobile costuma salvar localmente o token de autenticação ou dados para consulta offline?",
+          "opcoes": [
+            "Em bancos locais como SQLite ou armazenamentos chave-valor como AsyncStorage",
+            "Na caixa postal de correio de voz da operadora",
+            "Diretamente na foto de perfil do WhatsApp"
+          ],
+          "correta": 0,
+          "dica": "Mecanismos de persistência local garantem que o app lembre de preferências e funcione mesmo sem sinal de internet."
+        }
+      },
+      {
+        "id": 9,
+        "nivel": 2,
+        "nome": "Módulo 9 (Navegação & Deep Linking)",
+        "icone": "🧭",
+        "competencia": "Você estrutura navegação por pilha (Stack), abas (Tabs) e links diretos (Deep Links) no app",
+        "licao": {
+          "pergunta": "O que é o padrão de navegação 'Stack Navigation' amplamente usado em aplicativos mobile?",
+          "opcoes": [
+            "Uma pilha de telas onde uma nova tela é empilhada por cima da anterior e o botão voltar desempilha a tela atual",
+            "Um menu que só pode ser aberto por comando de voz",
+            "Uma tela única que nunca muda de conteúdo"
+          ],
+          "correta": 0,
+          "dica": "A navegação em pilha preserva o histórico de navegação permitindo voltar naturalmente à tela de origem."
+        }
+      },
+      {
+        "id": 10,
+        "nivel": 2,
+        "nome": "Módulo 10 (Ciclo de Vida do App)",
+        "icone": "⏳",
+        "competencia": "Você gerencia os estados do ciclo de vida da aplicação (Active, Background, Inactive)",
+        "licao": {
+          "pergunta": "O que acontece no ciclo de vida de um aplicativo móvel quando o usuário recebe uma ligação e atende?",
+          "opcoes": [
+            "O app entra em estado 'Background' ou 'Inactive', devendo pausar mídias e salvar estados pendentes",
+            "O app é desinstalado automaticamente do celular",
+            "O código fonte do app é apagado da memória flash"
+          ],
+          "correta": 0,
+          "dica": "Gerenciar os eventos de lifecycle evita comportamentos inesperados e perda de dados não salvos."
+        }
+      },
+      {
+        "id": 11,
+        "nivel": 3,
+        "nome": "Módulo 11 (Notificações Push & FCM)",
+        "icone": "🔔",
+        "competencia": "Você domina envio e recepção de notificações Push com Firebase Cloud Messaging (FCM) e APNs",
+        "licao": {
+          "pergunta": "Como funciona a entrega de notificações Push remotas quando o aplicativo está totalmente fechado no smartphone?",
+          "opcoes": [
+            "O servidor envia a mensagem para serviços da plataforma (Firebase FCM ou Apple APNs), que entregam diretamente ao sistema operacional do aparelho",
+            "O app precisa manter um navegador de internet oculto aberto para sempre",
+            "O usuário precisa ligar para o suporte da operadora"
+          ],
+          "correta": 0,
+          "dica": "Os serviços de push mantêm uma única conexão de socket otimizada pelo próprio sistema operacional."
+        }
+      },
+      {
+        "id": 12,
+        "nivel": 3,
+        "nome": "Módulo 12 (Gerenciamento de Estado Global)",
+        "icone": "🧠",
+        "competencia": "Você arquiteta fluxos de dados globais com Redux, Zustand ou Riverpod/Bloc em apps complexos",
+        "licao": {
+          "pergunta": "Qual é a principal vantagem de utilizar uma biblioteca de estado global (como Redux, Zustand ou Riverpod) em apps mobile complexos?",
+          "opcoes": [
+            "Compartilhar dados (como usuário autenticado e carrinho) entre dezenas de telas sem ter que repassar props manualmente por toda a árvore",
+            "Aumentar o volume dos alto-falantes do celular",
+            "Substituir o backend em nuvem"
+          ],
+          "correta": 0,
+          "dica": "O estado global desacopla a lógica de negócio dos componentes visuais e centraliza a fonte da verdade."
+        }
+      },
+      {
+        "id": 13,
+        "nivel": 3,
+        "nome": "Módulo 13 (Otimização de Renderização)",
+        "icone": "⚡",
+        "competencia": "Você elimina engasgos de taxa de quadros (60/120 FPS) e previne re-renderizações desnecessárias",
+        "licao": {
+          "pergunta": "No desenvolvimento com React Native, qual técnica evita re-renderizações custosas de componentes filhos quando o componente pai atualiza?",
+          "opcoes": [
+            "Uso de React.memo, useCallback e useMemo para memorizar cálculos e referências",
+            "Criar todos os componentes dentro de uma única função gigante",
+            "Desligar a conexão Wi-Fi do smartphone"
+          ],
+          "correta": 0,
+          "dica": "Memorizar callbacks e componentes previne repinturas desnecessárias de componentes pesados da árvore."
+        }
+      },
+      {
+        "id": 14,
+        "nivel": 3,
+        "nome": "Módulo 14 (Testes Unitários & E2E)",
+        "icone": "🧪",
+        "competencia": "Você implementa testes unitários com Jest e testes ponta a ponta com Detox/Maestro no mobile",
+        "licao": {
+          "pergunta": "Qual a diferença entre Testes Unitários e Testes End-to-End (E2E com Detox/Maestro) em desenvolvimento mobile?",
+          "opcoes": [
+            "Testes unitários validam funções isoladas, enquanto testes E2E simulam o usuário real tocando em botões e fluxos completos",
+            "Testes E2E só podem ser feitos no papel com caneta",
+            "Testes unitários testam a câmera física do aparelho"
+          ],
+          "correta": 0,
+          "dica": "Testes E2E garantem que o fluxo completo (login -> compra -> confirmação) funcione na interface real."
+        }
+      },
+      {
+        "id": 15,
+        "nivel": 3,
+        "nome": "Módulo 15 (Build & Publicação na Loja)",
+        "icone": "🚀",
+        "competencia": "Você gera pacotes App Bundle (.aab), assina certificados com Keystore e publica na Google Play e App Store",
+        "licao": {
+          "pergunta": "Qual formato moderno do Google é obrigatório para publicar apps na Google Play, gerando downloads customizados para a arquitetura de cada aparelho?",
+          "opcoes": [
+            "Android App Bundle (.aab)",
+            "Arquivo de texto comum (.txt)",
+            "Arquivo executável do Windows (.exe)"
+          ],
+          "correta": 0,
+          "dica": "O formato .aab transfere para o Google Play a responsabilidade de assinar e entregar apks otimizados e menores para cada dispositivo."
+        }
+      }
+    ]
+  },
+  "Ferramentas de trabalho": {
+    "nivelamento": [
+      {
+        "q": "Qual é o editor de código mais popular do mundo, desenvolvido pela Microsoft?",
+        "opts": [
+          "Visual Studio Code (VS Code)",
+          "Bloco de Notas",
+          "Microsoft Paint"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Para que serve a ferramenta Git no dia a dia do desenvolvedor?",
+        "opts": [
+          "Controlar versões e histórico de alterações do código-fonte",
+          "Tirar print da tela do computador",
+          "Limpar a poeira do teclado"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Qual é a principal plataforma em nuvem para hospedar repositórios Git e colaborar em equipe?",
+        "opts": [
+          "GitHub",
+          "Instagram",
+          "Spotify"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Para que os desenvolvedores utilizam o Terminal ou Prompt de Comando?",
+        "opts": [
+          "Executar comandos diretos, scripts e gerenciar servidores com rapidez",
+          "Trocar o papel de parede",
+          "Apenas para ver filmes"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Qual ferramenta é mundialmente usada para testar e documentar requisições para APIs REST?",
+        "opts": [
+          "Postman",
+          "WinRAR",
+          "Windows Media Player"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é o Docker no ambiente de desenvolvimento?",
+        "opts": [
+          "Uma plataforma de contêineres que empacota o app e suas dependências para rodar igual em qualquer lugar",
+          "Um antivírus para computador",
+          "Um teclado mecânico especial"
+        ],
+        "correta": 0
+      }
+    ],
+    "modulos": [
+      {
+        "id": 1,
+        "nivel": 1,
+        "nome": "Módulo 1 (VS Code & Atalhos)",
+        "icone": "💻",
+        "competencia": "Você domina o VS Code, extensões, temas e atalhos rápidos de navegação",
+        "licao": {
+          "pergunta": "Qual atalho no VS Code abre rapidamente a paleta de comandos (Command Palette) para buscar ações e arquivos?",
+          "opcoes": [
+            "Ctrl + Shift + P (ou Cmd+Shift+P)",
+            "Ctrl + Alt + Del",
+            "Tecla Pause Break"
+          ],
+          "correta": 0,
+          "dica": "O Command Palette é o coração da produtividade e comandos rápidos no VS Code."
+        }
+      },
+      {
+        "id": 2,
+        "nivel": 1,
+        "nome": "Módulo 2 (Terminal & Comandos Básicos)",
+        "icone": "⌨️",
+        "competencia": "Você sabe navegar entre pastas, listar arquivos e executar scripts no terminal",
+        "licao": {
+          "pergunta": "Qual comando do terminal é universalmente usado para trocar e navegar entre pastas de arquivos?",
+          "opcoes": [
+            "cd (change directory)",
+            "rm (remove)",
+            "cls (clear)"
+          ],
+          "correta": 0,
+          "dica": "'cd nome-da-pasta' entra no diretório desejado e 'cd ..' retorna ao diretório pai."
+        }
+      },
+      {
+        "id": 3,
+        "nivel": 1,
+        "nome": "Módulo 3 (Git: git init & status)",
+        "icone": "🌱",
+        "competencia": "Você sabe iniciar um repositório Git e verificar o status de arquivos modificados",
+        "licao": {
+          "pergunta": "Qual comando do Git verifica quais arquivos foram criados, modificados ou preparados para commit no seu projeto?",
+          "opcoes": [
+            "git status",
+            "git delete",
+            "git stop"
+          ],
+          "correta": 0,
+          "dica": "'git status' informa o estado da sua working tree e quais alterações estão pendentes."
+        }
+      },
+      {
+        "id": 4,
+        "nivel": 1,
+        "nome": "Módulo 4 (Git: git add & commit)",
+        "icone": "📸",
+        "competencia": "Você sabe preparar alterações e criar commits atômicos com mensagens claras",
+        "licao": {
+          "pergunta": "Qual comando do Git empacota as alterações adicionadas e registra um novo ponto na linha do tempo com uma mensagem explicativa?",
+          "opcoes": [
+            "git commit -m 'mensagem explicativa'",
+            "git cancel",
+            "git copy-all"
+          ],
+          "correta": 0,
+          "dica": "O commit é como uma foto do projeto com data, autor e mensagem explicando o que mudou."
+        }
+      },
+      {
+        "id": 5,
+        "nivel": 1,
+        "nome": "Módulo 5 (GitHub & Repositório Remoto)",
+        "icone": "🐙",
+        "competencia": "Você conecta seu repositório local ao GitHub e cria documentação clara com README.md",
+        "licao": {
+          "pergunta": "Qual comando conecta seu repositório local a um repositório remoto hospedado no GitHub para sincronização?",
+          "opcoes": [
+            "git remote add origin <url-do-repositorio>",
+            "git exit",
+            "git restart"
+          ],
+          "correta": 0,
+          "dica": "O alias 'origin' é o nome padrão dado ao repositório remoto principal do projeto."
+        }
+      },
+      {
+        "id": 6,
+        "nivel": 2,
+        "nome": "Módulo 6 (Branches: git branch)",
+        "icone": "🌿",
+        "competencia": "Você cria ramificações (branches) para trabalhar em novas features sem interferir na branch main",
+        "licao": {
+          "pergunta": "Por que desenvolvedores criam uma nova branch (ex: 'git checkout -b feature-login') em vez de programar tudo direto na 'main'?",
+          "opcoes": [
+            "Para desenvolver novas funcionalidades isoladamente sem risco de quebrar o código estável que está em produção",
+            "Porque o Git não aceita mais de um commit na branch main",
+            "Porque branches deixam o computador com mais memória"
+          ],
+          "correta": 0,
+          "dica": "Branches permitem trabalho paralelo por vários desenvolvedores sem interferência mútua."
+        }
+      },
+      {
+        "id": 7,
+        "nivel": 2,
+        "nome": "Módulo 7 (Sincronização: push & pull)",
+        "icone": "☁️",
+        "competencia": "Você domina o fluxo de sincronização entre o repositório local e a nuvem com git push e git pull",
+        "licao": {
+          "pergunta": "Qual comando do Git baixa as atualizações mais recentes feitas por outros colegas de equipe no repositório remoto para sua máquina?",
+          "opcoes": [
+            "git pull origin main",
+            "git push origin main",
+            "git clean --force"
+          ],
+          "correta": 0,
+          "dica": "'git pull' busca os commits remotos e mescla automaticamente com a sua branch de trabalho local."
+        }
+      },
+      {
+        "id": 8,
+        "nivel": 2,
+        "nome": "Módulo 8 (Pull Requests & Code Review)",
+        "icone": "👀",
+        "competencia": "Você colabora em equipe abrindo Pull Requests, participando de Code Reviews e resolvendo apontamentos",
+        "licao": {
+          "pergunta": "No GitHub, qual é o objetivo de abrir um Pull Request (PR) antes de incorporar um código novo?",
+          "opcoes": [
+            "Permitir que outros desenvolvedores revisem o código, façam sugestões de melhoria e aprovem antes do merge",
+            "Solicitar o cancelamento do repositório",
+            "Pagar a taxa mensal de hospedagem"
+          ],
+          "correta": 0,
+          "dica": "Code Reviews em PRs previnem bugs, garantem padrões arquiteturais e disseminam conhecimento no time."
+        }
+      },
+      {
+        "id": 9,
+        "nivel": 2,
+        "nome": "Módulo 9 (Testes de APIs no Postman)",
+        "icone": "📬",
+        "competencia": "Você sabe testar endpoints HTTP, verificar status codes (200, 201, 404, 500) e automatizar chamadas",
+        "licao": {
+          "pergunta": "No Postman ou Insomnia, qual método HTTP e status code indicam, respectivamente, o cadastro com sucesso de um novo registro no servidor?",
+          "opcoes": [
+            "Método POST com status code 201 (Created)",
+            "Método GET com status code 404 (Not Found)",
+            "Método DELETE com status code 500 (Internal Error)"
+          ],
+          "correta": 0,
+          "dica": "POST envia dados no corpo da requisição e o status 201 confirma que o recurso foi criado no banco."
+        }
+      },
+      {
+        "id": 10,
+        "nivel": 2,
+        "nome": "Módulo 10 (Gerenciador de Pacotes: npm)",
+        "icone": "📦",
+        "competencia": "Você gerencia dependências, scripts de automação e versões de bibliotecas via package.json",
+        "licao": {
+          "pergunta": "Qual arquivo de configuração centraliza os nomes e versões exatas de todas as bibliotecas e dependências de um projeto Node.js?",
+          "opcoes": [
+            "package.json",
+            "styles.css",
+            "index.exe"
+          ],
+          "correta": 0,
+          "dica": "O 'package.json' permite que qualquer dev baixe o código e instale todas as dependências com apenas 'npm install'."
+        }
+      },
+      {
+        "id": 11,
+        "nivel": 3,
+        "nome": "Módulo 11 (Docker & Ambientes)",
+        "icone": "🐳",
+        "competencia": "Você sabe empacotar aplicações em contêineres Docker, garantindo ambientes idênticos em qualquer máquina",
+        "licao": {
+          "pergunta": "Qual o principal benefício de rodar sua aplicação dentro de um contêiner Docker?",
+          "opcoes": [
+            "Garantir que a aplicação funcione exatamente igual no computador do dev e no servidor em produção",
+            "Fazer o código rodar sem eletricidade",
+            "Eliminar a necessidade de escrever testes"
+          ],
+          "correta": 0,
+          "dica": "Contêineres empacotam código, bibliotecas e ambiente do sistema, eliminando o clássico 'na minha máquina funciona'."
+        }
+      },
+      {
+        "id": 12,
+        "nivel": 3,
+        "nome": "Módulo 12 (Construindo Dockerfiles)",
+        "icone": "🏗️",
+        "competencia": "Você escreve instruções de build otimizadas (FROM, WORKDIR, COPY, RUN, CMD) em arquivos Dockerfile",
+        "licao": {
+          "pergunta": "Em um arquivo Dockerfile, qual instrução define o comando padrão executado para iniciar o servidor quando o contêiner sobe?",
+          "opcoes": [
+            "CMD (ex: CMD ['node', 'server.js'])",
+            "FROM",
+            "COPY"
+          ],
+          "correta": 0,
+          "dica": "A diretiva CMD especifica o processo principal que deve rodar para manter o contêiner em execução."
+        }
+      },
+      {
+        "id": 13,
+        "nivel": 3,
+        "nome": "Módulo 13 (Variáveis de Ambiente & .env)",
+        "icone": "🔒",
+        "competencia": "Você protege credenciais, chaves de API e segredos sensíveis com arquivos .env e .gitignore",
+        "licao": {
+          "pergunta": "Por que desenvolvedores guardam chaves de API secretas e senhas de banco em arquivos .env (e nunca os commitam no GitHub)?",
+          "opcoes": [
+            "Para impedir o vazamento público de credenciais confidenciais nos repositórios da internet",
+            "Porque arquivos .env aumentam a velocidade da internet",
+            "Porque o Node.js apaga códigos sem .env"
+          ],
+          "correta": 0,
+          "dica": "Credenciais vazadas em repositórios públicos são varridas por bots em segundos, gerando riscos gravíssimos de segurança e cobranças indevidas."
+        }
+      },
+      {
+        "id": 14,
+        "nivel": 3,
+        "nome": "Módulo 14 (Git Avançado: Rebase & Conflitos)",
+        "icone": "🔀",
+        "competencia": "Você resolve conflitos de merge complexos e reorganiza o histórico de commits usando git rebase",
+        "licao": {
+          "pergunta": "O que acontece quando dois desenvolvedores alteram as mesmas linhas do mesmo arquivo em branches diferentes e tentam unir o código?",
+          "opcoes": [
+            "Ocorre um Conflito de Merge (Merge Conflict), que deve ser resolvido manualmente escolhendo a versão correta",
+            "O computador de um dos desenvolvedores reinicia sozinho",
+            "O Git deleta todo o repositório da nuvem"
+          ],
+          "correta": 0,
+          "dica": "O Git marca os trechos conflitantes com '<<<<<<< HEAD' e aguarda a decisão do programador para concluir o merge."
+        }
+      },
+      {
+        "id": 15,
+        "nivel": 3,
+        "nome": "Módulo 15 (CI/CD com GitHub Actions)",
+        "icone": "⚙️",
+        "competencia": "Você automatiza pipelines de teste, validação de lint e deploy contínuo na nuvem via GitHub Actions",
+        "licao": {
+          "pergunta": "O que é uma pipeline de CI/CD (Continuous Integration / Continuous Deployment) configurada via GitHub Actions?",
+          "opcoes": [
+            "Um fluxo automatizado que roda testes, faz verificação de qualidade de código e publica a aplicação na nuvem a cada commit",
+            "Um jogo multiplayer integrado ao terminal do VS Code",
+            "Um antivírus gratuito para navegadores"
+          ],
+          "correta": 0,
+          "dica": "CI/CD garante que nenhum código quebrado vá para produção e automatiza o ciclo de entrega de software."
+        }
+      }
+    ]
+  },
+  "Internet segura": {
+    "nivelamento": [
+      {
+        "q": "O que você deve fazer ao receber um e-mail urgente de um banco pedindo para clicar em um link e digitar sua senha?",
+        "opts": [
+          "Desconfiar de golpe (phishing) e nunca clicar no link",
+          "Clicar rápido e digitar a senha solicitada",
+          "Encaminhar para todos os contatos"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "Qual é a recomendação essencial para criar senhas fortes e seguras?",
+        "opts": [
+          "Usar frases longas misturando letras maiúsculas, minúsculas, números e símbolos",
+          "Usar '123456' em todos os sites",
+          "Colocar apenas o ano de nascimento"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é a Autenticação em Dois Fatores (2FA / MFA)?",
+        "opts": [
+          "Uma camada extra de segurança que pede uma confirmação adicional (código no celular) além da senha",
+          "Ter que digitar a mesma senha duas vezes seguidas",
+          "Ter duas contas no mesmo site"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que significa o cadeado fechado e o 'https://' no endereço de um site?",
+        "opts": [
+          "A comunicação entre seu navegador e o site é criptografada e protegida contra interceptação",
+          "O site é imune a qualquer vírus do mundo",
+          "O site pertence ao governo federal"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é um ataque de Engenharia Social no contexto de cibersegurança?",
+        "opts": [
+          "Manipular psicologicamente pessoas para que elas forneçam senhas ou dados confidenciais voluntariamente",
+          "Construir pontes pela internet",
+          "Consertar redes sociais com problemas técnicos"
+        ],
+        "correta": 0
+      },
+      {
+        "q": "O que é um ataque DDoS (Distributed Denial of Service)?",
+        "opts": [
+          "Sobrecarga intencional de um servidor com tráfego maciço de computadores para derrubar o serviço",
+          "Roubar a senha do Wi-Fi de um vizinho",
+          "Apagar o disco rígido remotamente"
+        ],
+        "correta": 0
+      }
+    ],
+    "modulos": [
+      {
+        "id": 1,
+        "nivel": 1,
+        "nome": "Módulo 1 (Senhas & Higiene Digital)",
+        "icone": "🔑",
+        "competencia": "Você sabe criar senhas blindadas, usar gerenciadores de senhas e evitar reutilização",
+        "licao": {
+          "pergunta": "Por que nunca devemos usar a mesma senha em vários sites diferentes?",
+          "opcoes": [
+            "Se um dos sites sofrer vazamento de dados, os invasores terão acesso a todas as suas outras contas",
+            "Porque o navegador de internet não permite",
+            "Porque gasta mais memória do computador"
+          ],
+          "correta": 0,
+          "dica": "Invasores usam listas de senhas vazadas para tentar invadir e-mail, redes sociais e bancos (Credential Stuffing)."
+        }
+      },
+      {
+        "id": 2,
+        "nivel": 1,
+        "nome": "Módulo 2 (Defesa contra Phishing)",
+        "icone": "🎣",
+        "competencia": "Você identifica e-mails, SMS e links fraudulentos antes de cair em armadilhas",
+        "licao": {
+          "pergunta": "Qual é um sinal clássico de uma mensagem de Phishing (golpe digital)?",
+          "opcoes": [
+            "Senso de urgência exagerado, erros de português e links para domínios estranhos",
+            "Mensagens enviadas sem nenhuma imagem anexada",
+            "E-mails que chegam em horário comercial"
+          ],
+          "correta": 0,
+          "dica": "Golpistas apelam para o medo e a urgência ('sua conta será bloqueada em 1 hora') para fazer você agir por impulso."
+        }
+      },
+      {
+        "id": 3,
+        "nivel": 1,
+        "nome": "Módulo 3 (Navegação Segura & HTTPS)",
+        "icone": "🌐",
+        "competencia": "Você reconhece conexões seguras com certificados TLS válidos e protocolo HTTPS",
+        "licao": {
+          "pergunta": "O que indica o cadeado fechado e a sigla 'https://' no endereço de um site no navegador?",
+          "opcoes": [
+            "Que os dados trafegados entre seu navegador e o servidor estão criptografados contra espionagem na rede",
+            "Que o site foi criado pelo governo federal",
+            "Que o site é totalmente imune a qualquer tipo de fraude"
+          ],
+          "correta": 0,
+          "dica": "O HTTPS utiliza certificados TLS para criptografar o canal e garantir a identidade do domínio visitado."
+        }
+      },
+      {
+        "id": 4,
+        "nivel": 1,
+        "nome": "Módulo 4 (Cuidado com Downloads & Anexos)",
+        "icone": "⚠️",
+        "competencia": "Você sabe se prevenir contra arquivos maliciosos, scripts ocultos e executáveis perigosos",
+        "licao": {
+          "pergunta": "Qual tipo de anexo em e-mails desconhecidos representa o maior perigo imediato de infectar seu computador com vírus?",
+          "opcoes": [
+            "Arquivos executáveis ou scripts (.exe, .bat, .scr, .vbs)",
+            "Imagens em formato PNG (.png)",
+            "Arquivos de áudio comuns"
+          ],
+          "correta": 0,
+          "dica": "Executáveis podem rodar qualquer instrução danosa no sistema operacional no exato instante do clique."
+        }
+      },
+      {
+        "id": 5,
+        "nivel": 1,
+        "nome": "Módulo 5 (Privacidade & Oversharing)",
+        "icone": "👁️",
+        "competencia": "Você protege sua pegada digital e evita expor dados que facilitam golpes de engenharia social",
+        "licao": {
+          "pergunta": "O que é 'Oversharing' em redes sociais e por que ele compromete sua segurança no mundo real e digital?",
+          "opcoes": [
+            "Publicar detalhes excessivos da rotina pessoal, viagens em tempo real e fotos de documentos que facilitam golpes",
+            "Compartilhar músicas no fone de ouvido com amigos",
+            "Ter mais de um perfil na mesma rede social"
+          ],
+          "correta": 0,
+          "dica": "Informações públicas sobre locais frequentes e datas de nascimento são usadas em engenharia social e fraudes de identidade."
+        }
+      },
+      {
+        "id": 6,
+        "nivel": 2,
+        "nome": "Módulo 6 (MFA & Tokens TOTP)",
+        "icone": "🔒",
+        "competencia": "Você domina chaves de segurança, aplicativos autenticadores (TOTP) e criptografia de ponta a ponta",
+        "licao": {
+          "pergunta": "Qual método de Autenticação em Dois Fatores (2FA) é mais seguro contra clonagem de chip (SIM Swap)?",
+          "opcoes": [
+            "Aplicativos autenticadores (como Google Authenticator) ou chaves físicas (Passkeys)",
+            "SMS tradicional com código de 4 dígitos",
+            "Ligação telefônica aberta"
+          ],
+          "correta": 0,
+          "dica": "O código gerado no app fica salvo localmente no seu dispositivo e não pode ser interceptado por clonagem de linha telefônica."
+        }
+      },
+      {
+        "id": 7,
+        "nivel": 2,
+        "nome": "Módulo 7 (Wi-Fi Público & VPN)",
+        "icone": "🛡️",
+        "competencia": "Você sabe se proteger em redes Wi-Fi públicas, usar VPNs confiáveis e evitar espionagem",
+        "licao": {
+          "pergunta": "Qual o maior perigo ao conectar em um Wi-Fi público e aberto (sem senha) em cafés ou aeroportos?",
+          "opcoes": [
+            "Outras pessoas na mesma rede podem interceptar dados não criptografados (ataque Man-in-the-Middle)",
+            "Seu celular desligar a bateria instantaneamente",
+            "O café cobrar mais caro na sua conta"
+          ],
+          "correta": 0,
+          "dica": "Em redes abertas sem proteção, qualquer pessoa com ferramentas simples pode farejar o tráfego da rede."
+        }
+      },
+      {
+        "id": 8,
+        "nivel": 2,
+        "nome": "Módulo 8 (Engenharia Social & Golpes)",
+        "icone": "🎭",
+        "competencia": "Você reconhece táticas de manipulação psicológica, falsos suportes e tentativas de pretexting",
+        "licao": {
+          "pergunta": "O que caracteriza um ataque de Engenharia Social no universo da cibersegurança?",
+          "opcoes": [
+            "Manipulação psicológica e persuasão para fazer funcionários ou pessoas comuns revelarem senhas ou transferirem recursos voluntariamente",
+            "Um defeito físico nas placas de circuito integrado",
+            "A criação de novos cabos de fibra ótica submarinos"
+          ],
+          "correta": 0,
+          "dica": "O elo humano costuma ser explorado com histórias falsas (falso suporte técnico, falso parente em apuros) para burlar barreiras técnicas."
+        }
+      },
+      {
+        "id": 9,
+        "nivel": 2,
+        "nome": "Módulo 9 (Malwares & Ransomware)",
+        "icone": "☣️",
+        "competencia": "Você entende o mecanismo do ransomware e adota estratégias de backup offline para recuperação",
+        "licao": {
+          "pergunta": "Como opera um ataque de Ransomware e qual é a melhor estratégia de recuperação contra ele?",
+          "opcoes": [
+            "Ele criptografa e bloqueia todos os arquivos do disco exigindo resgate, e a melhor defesa é possuir backups seguros e desconectados (offline)",
+            "Ele apaga o monitor de vídeo e basta trocar a tela",
+            "Ele apenas altera o papel de parede para uma cor preta"
+          ],
+          "correta": 0,
+          "dica": "Backups protegidos e imutáveis permitem restaurar os dados sem ter que negociar com criminosos."
+        }
+      },
+      {
+        "id": 10,
+        "nivel": 2,
+        "nome": "Módulo 10 (Permissões de Apps & Rastreamento)",
+        "icone": "🕵️",
+        "competencia": "Você audita permissões invasivas de aplicativos e bloqueia rastreadores de terceiros",
+        "licao": {
+          "pergunta": "Por que devemos auditar periodicamente as permissões de aplicativos instalados no celular?",
+          "opcoes": [
+            "Para revogar acessos abusivos a microfone, contatos e localização em segundo plano concedidos a apps que não precisam deles",
+            "Para fazer os aplicativos ficarem com ícones maiores",
+            "Para aumentar o limite de mensagens do celular"
+          ],
+          "correta": 0,
+          "dica": "Aplicativos de lanterna ou calculadora não necessitam de acesso a contatos ou localização para desempenhar sua função."
+        }
+      },
+      {
+        "id": 11,
+        "nivel": 3,
+        "nome": "Módulo 11 (Arquitetura Zero Trust)",
+        "icone": "🏰",
+        "competencia": "Você entende conceitos de Zero Trust, Firewalls, defesa em profundidade e segurança corporativa",
+        "licao": {
+          "pergunta": "Qual é o princípio fundamental da arquitetura de segurança 'Zero Trust' adotada pelas maiores empresas de tecnologia?",
+          "opcoes": [
+            "'Nunca confie, sempre verifique': todo acesso interno ou externo deve ser autenticado e validado continuamente",
+            "Confiar cegamente em quem já está conectado dentro do escritório",
+            "Desligar os firewalls para agilizar os acessos"
+          ],
+          "correta": 0,
+          "dica": "No modelo Zero Trust, mesmo dentro da rede da empresa, cada solicitação é tratada como se viesse de uma rede aberta e hostil."
+        }
+      },
+      {
+        "id": 12,
+        "nivel": 3,
+        "nome": "Módulo 12 (Ataques DDoS & Botnets)",
+        "icone": "💥",
+        "competencia": "Você entende como botnets orquestram ataques de negação de serviço e como mitigá-los",
+        "licao": {
+          "pergunta": "O que é um ataque DDoS (Distributed Denial of Service) e como criminosos conseguem volume tão maciço de tráfego?",
+          "opcoes": [
+            "Eles utilizam redes de milhares de dispositivos infectados (Botnets) para sobrecarregar simultaneamente os servidores da vítima até saírem do ar",
+            "Eles cortam fisicamente os cabos de energia da sede da empresa",
+            "Eles mandam cartas impressas para a equipe técnica"
+          ],
+          "correta": 0,
+          "dica": "Botnets compostas por câmeras IP, roteadores desprotegidos e computadores zumbis geram terabits de requisições maliciosas."
+        }
+      },
+      {
+        "id": 13,
+        "nivel": 3,
+        "nome": "Módulo 13 (Criptografia Assimétrica & TLS)",
+        "icone": "🔐",
+        "competencia": "Você compreende o funcionamento de chaves públicas, chaves privadas, certificados X.509 e handshake TLS",
+        "licao": {
+          "pergunta": "Como funciona a criptografia de chave pública (assimétrica) usada no SSH, HTTPS e assinaturas digitais?",
+          "opcoes": [
+            "Qualquer um pode usar a Chave Pública para criptografar uma mensagem, mas somente o dono da Chave Privada correspondente consegue descriptografá-la",
+            "A mesma senha simples é enviada por e-mail para todos os participantes",
+            "Os dados não são criptografados, apenas renomeados"
+          ],
+          "correta": 0,
+          "dica": "O par matemático garante sigilo e autenticidade sem que a chave secreta privada precise trafegar pela rede."
+        }
+      },
+      {
+        "id": 14,
+        "nivel": 3,
+        "nome": "Módulo 14 (Vulnerabilidades Web: OWASP Top 10)",
+        "icone": "🛡️",
+        "competencia": "Você sabe identificar e prevenir falhas críticas como SQL Injection (SQLi) e Cross-Site Scripting (XSS)",
+        "licao": {
+          "pergunta": "O que é a vulnerabilidade de SQL Injection (SQLi) e qual é a técnica fundamental para preveni-la no código?",
+          "opcoes": [
+            "Inserção de comandos maliciosos em campos de entrada para manipular o banco de dados; previne-se utilizando consultas parametrizadas (Prepared Statements)",
+            "Um vírus que infecta mouses e teclados mecânicos",
+            "Um erro de conexão de cabos de internet"
+          ],
+          "correta": 0,
+          "dica": "Prepared Statements tratam entradas de usuários estritamente como parâmetros de dados, nunca como código executável."
+        }
+      },
+      {
+        "id": 15,
+        "nivel": 3,
+        "nome": "Módulo 15 (Resposta a Incidentes & Hardening)",
+        "icone": "🚨",
+        "competencia": "Você está preparado para conter incidentes de invasão, isolar hosts infectados e aplicar hardening no ambiente",
+        "licao": {
+          "pergunta": "Qual a primeira medida crítica a ser tomada ao detectar que um servidor foi comprometido por invasores na rede?",
+          "opcoes": [
+            "Isolar o dispositivo afetado da rede imediatamente para conter a disseminação lateral e preservar evidências para análise forense",
+            "Formatar a máquina na hora sem salvar nenhum log",
+            "Desligar o disjuntor de energia elétrica de todo o prédio"
+          ],
+          "correta": 0,
+          "dica": "A contenção rápida interrompe a exfiltração de dados e preserva a memória volátil para a investigação forense dos analistas de segurança."
+        }
+      }
+    ]
+  }
+};
 
   function getModulos() {
     const tema = state.tema || temas[0];
@@ -833,13 +1848,15 @@
   let state = JSON.parse(sessionStorage.getItem("aprendia_state")) || {
     logado: false,
     tema: "",
+    unidadeAtiva: 1,
     moduloInicial: 1,
     moduloDesbloqueado: 1,
     concluidos: [],
+    unidadesCelebradas: [],
     xp: 0,
     sequencia: 1,
     primeiraLicaoFeita: false,
-    moduloDificuldade: "Módulo 1 (Básico)",
+    moduloDificuldade: "Módulo 1",
     trilhaCelebrada: false
   };
 
@@ -1086,17 +2103,21 @@
     const temaAtual = state.tema || temas[0];
     if (!state.trilhas[temaAtual]) {
       state.trilhas[temaAtual] = {
+        unidadeAtiva: 1,
         moduloInicial: 1,
         moduloDesbloqueado: 1,
         concluidos: [],
+        unidadesCelebradas: [],
         moduloDificuldade: "Módulo 1",
         trilhaCelebrada: false
       };
     }
     const t = state.trilhas[temaAtual];
+    state.unidadeAtiva = t.unidadeAtiva || (t.moduloDesbloqueado >= 11 ? 3 : t.moduloDesbloqueado >= 6 ? 2 : 1);
     state.moduloInicial = t.moduloInicial || 1;
     state.moduloDesbloqueado = t.moduloDesbloqueado || 1;
     state.concluidos = t.concluidos || [];
+    state.unidadesCelebradas = t.unidadesCelebradas || [];
     state.moduloDificuldade = t.moduloDificuldade || "Módulo 1";
     state.trilhaCelebrada = !!t.trilhaCelebrada;
   }
@@ -1105,13 +2126,42 @@
     if (!state.trilhas) state.trilhas = {};
     const temaAtual = state.tema || temas[0];
     state.trilhas[temaAtual] = {
+      unidadeAtiva: state.unidadeAtiva || 1,
       moduloInicial: state.moduloInicial,
       moduloDesbloqueado: state.moduloDesbloqueado,
       concluidos: state.concluidos,
+      unidadesCelebradas: state.unidadesCelebradas || [],
       moduloDificuldade: state.moduloDificuldade,
       trilhaCelebrada: state.trilhaCelebrada
     };
     salvarSessao();
+  }
+
+  function mudarUnidade(numUnidade) {
+    sincronizarProgressoTema();
+    if (numUnidade === 1) {
+      state.unidadeAtiva = 1;
+    } else if (numUnidade === 2) {
+      const facilCompleto = state.moduloDesbloqueado >= 6 || [1, 2, 3, 4, 5].every(id => state.concluidos.includes(id));
+      if (!facilCompleto) {
+        som.erro();
+        mostrarToast("🔒 Complete o Nível Fácil (módulos 1-5) para desbloquear o Nível Intermediário!");
+        return;
+      }
+      state.unidadeAtiva = 2;
+    } else if (numUnidade === 3) {
+      const interCompleto = state.moduloDesbloqueado >= 11 || [6, 7, 8, 9, 10].every(id => state.concluidos.includes(id));
+      if (!interCompleto) {
+        som.erro();
+        mostrarToast("🔒 Complete o Nível Intermediário (módulos 6-10) para desbloquear o Nível Difícil!");
+        return;
+      }
+      state.unidadeAtiva = 3;
+    }
+    som.toque();
+    salvarProgressoTema();
+    renderTrilha();
+    rolarParaAtual();
   }
 
   function trocarTrilha() {
@@ -1199,24 +2249,42 @@
     finalizarTeste(0);
   }
 
-  // Regra do escopo: 0-2 -> Módulo 1 | 3-5 -> Módulo 3 | 6 -> Módulo 5
+  // Regra progressiva: 0-2 -> Fácil (Unidade 1) | 3-5 -> Intermediário (Unidade 2) | 6 -> Avançado (Unidade 3)
   function finalizarTeste(acertos) {
     let modInicio = 1;
-    if (acertos >= 6) modInicio = 5;
-    else if (acertos >= 3) modInicio = 3;
-    else modInicio = 1;
+    let unid = 1;
+    let feitos = [];
+    let cel = [];
+    if (acertos >= 6) {
+      modInicio = 11;
+      unid = 3;
+      feitos = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      cel = [1, 2];
+    } else if (acertos >= 3) {
+      modInicio = 6;
+      unid = 2;
+      feitos = [1, 2, 3, 4, 5];
+      cel = [1];
+    } else {
+      modInicio = 1;
+      unid = 1;
+      feitos = [];
+      cel = [];
+    }
 
     state.moduloInicial = modInicio;
     state.moduloDesbloqueado = modInicio;
-    state.concluidos = [];
-    for (let i = 1; i < modInicio; i++) state.concluidos.push(i);
+    state.unidadeAtiva = unid;
+    state.concluidos = feitos;
+    state.unidadesCelebradas = cel;
     state.moduloDificuldade = `Módulo ${modInicio}`;
     salvarProgressoTema();
 
+    const nivelNome = unid === 3 ? "Nível Difícil (Avançado)" : unid === 2 ? "Nível Intermediário" : "Nível Fácil";
     $("topStats").style.display = "flex";
     $("mainNav").style.display = "flex";
     $("msgResultado").textContent =
-      `Você mandou bem no nivelamento de ${state.tema}! Vamos começar em [Módulo ${modInicio}]`;
+      `Você mandou bem no nivelamento de ${state.tema}! Desbloqueamos diretamente o [${nivelNome}] a partir do Módulo ${modInicio}.`;
     atualizarTopo();
     mostrarTela("telaResultado");
     setBot("botResultado", "star");
@@ -1239,17 +2307,49 @@
     if (idTela === "telaTrilha") rolarParaAtual();
   }
 
-  /* ---------- Trilha em tabuleiro ---------- */
+  /* ---------- Trilha em tabuleiro (5 módulos por unidade) ---------- */
   const LARGURA = 300, PASSO = 130, TOPO = 90, NODE_W = 76, NODE_H = 70;
   const DESLOC = [0, 70, 90, 30, -50, -90, -60]; // ziguezague do caminho
 
   function renderTrilha() {
     sincronizarProgressoTema();
-    const modulos = getModulos();
+    const modulosTodos = getModulos();
     $("nomeTemaTrilha").textContent = state.tema || temas[0];
     if ($("unitIco")) $("unitIco").textContent = iconesTemas[state.tema] || "🚀";
     $("iaTrilha").textContent =
       `🤖 IA: "Notamos que você teve dificuldade em [${state.moduloDificuldade}]. Que tal revisar antes de avançar?"`;
+
+    // Unidade ativa (1: 1-5, 2: 6-10, 3: 11-15)
+    const unid = state.unidadeAtiva || (state.moduloDesbloqueado >= 11 ? 3 : state.moduloDesbloqueado >= 6 ? 2 : 1);
+    state.unidadeAtiva = unid;
+
+    const u2Liberada = state.moduloDesbloqueado >= 6 || [1, 2, 3, 4, 5].every(id => state.concluidos.includes(id));
+    const u3Liberada = state.moduloDesbloqueado >= 11 || [6, 7, 8, 9, 10].every(id => state.concluidos.includes(id));
+
+    // Atualiza botões de unidades (tabs)
+    const tab1 = $("tabUnidade1");
+    const tab2 = $("tabUnidade2");
+    const tab3 = $("tabUnidade3");
+
+    if (tab1) tab1.className = "unit-tab" + (unid === 1 ? " active" : "");
+    if (tab2) {
+      tab2.className = "unit-tab" + (!u2Liberada ? " locked" : unid === 2 ? " active" : "");
+      tab2.title = u2Liberada ? "Nível Intermediário" : "Bloqueado: conclua o Nível Fácil";
+    }
+    if (tab3) {
+      tab3.className = "unit-tab" + (!u3Liberada ? " locked" : unid === 3 ? " active" : "");
+      tab3.title = u3Liberada ? "Nível Difícil" : "Bloqueado: conclua o Nível Intermediário";
+    }
+
+    const subtitulos = {
+      1: "Unidade 1 • Nível Fácil (1-5)",
+      2: "Unidade 2 • Nível Intermediário (6-10)",
+      3: "Unidade 3 • Nível Difícil (11-15)"
+    };
+    if ($("unitSubtitulo")) $("unitSubtitulo").textContent = subtitulos[unid] || "Unidade 1";
+
+    // Filtra os 5 módulos da unidade ativa
+    const modulos = modulosTodos.filter(m => Math.ceil(m.id / 5) === unid);
 
     const mapa = $("mapaModulos");
     mapa.innerHTML = "";
@@ -1306,28 +2406,41 @@
       if (estado === "current") {
         const bolha = document.createElement("div");
         bolha.className = "start-bubble";
-        bolha.textContent = state.concluidos.length ? "CONTINUAR" : "COMEÇAR";
+        bolha.textContent = concluido ? "REVISAR" : "COMEÇAR";
         bolha.style.left = x + "px";
         bolha.style.top = (y - 80) + "px";
         mapa.appendChild(bolha);
       }
     });
 
-    // Casa final do tabuleiro: troféu
-    const completo = state.concluidos.length === modulos.length;
+    // Casa final do tabuleiro desta unidade
+    const unidadeConcluida = modulos.every(m => state.concluidos.includes(m.id));
     const trofeu = document.createElement("div");
-    trofeu.className = "node trophy " + (completo ? "done" : "locked");
+    const iconeFinal = unid === 1 ? "🌱" : unid === 2 ? "⚡" : "🏆";
+    const labelFinal = unid === 1 ? "Meta Nível 1" : unid === 2 ? "Meta Nível 2" : "Troféu Supremo";
+    const subLabelFinal = unid === 1
+      ? (unidadeConcluida ? "Intermediário liberado!" : "Conclua 5 lições")
+      : unid === 2
+      ? (unidadeConcluida ? "Avançado liberado!" : "Conclua 10 lições")
+      : (unidadeConcluida ? "Trilha Concluída!" : "Conclua as 15 lições");
+
+    trofeu.className = "node trophy " + (unidadeConcluida ? "done" : "locked");
     trofeu.style.left = (fim.x - 46) + "px";
     trofeu.style.top = (fim.y - 42) + "px";
-    trofeu.setAttribute("role", "img");
-    trofeu.setAttribute("aria-label", completo ? "Troféu conquistado" : "Troféu: conclua todos os módulos");
-    trofeu.innerHTML = '<span aria-hidden="true">🏆</span>';
+    trofeu.setAttribute("role", "button");
+    trofeu.setAttribute("aria-label", labelFinal + ": " + subLabelFinal);
+    trofeu.innerHTML = `<span aria-hidden="true">${iconeFinal}</span>`;
+    if (unidadeConcluida && unid < 3) {
+      trofeu.style.cursor = "pointer";
+      trofeu.onclick = () => mudarUnidade(unid + 1);
+    }
     mapa.appendChild(trofeu);
+
     const labT = document.createElement("div");
-    labT.className = "node-label right" + (completo ? " on" : "");
+    labT.className = "node-label right" + (unidadeConcluida ? " on" : "");
     labT.style.top = (fim.y - 18) + "px";
     labT.style.left = (fim.x + 56) + "px";
-    labT.innerHTML = "<strong>Troféu</strong><small>Fim da trilha</small>";
+    labT.innerHTML = `<strong>${labelFinal}</strong><small>${subLabelFinal}</small>`;
     mapa.appendChild(labT);
 
     ultimoConcluido = null;
@@ -1343,8 +2456,8 @@
   function abrirLicao(idMod) {
     moduloAtualId = idMod;
     respLicaoSel = null;
-    const modulos = getModulos();
-    const mod = modulos.find(m => m.id === idMod);
+    const modulosTodos = getModulos();
+    const mod = modulosTodos.find(m => m.id === idMod);
     $("tituloModuloLicao").textContent = mod.nome;
     $("perguntaLicao").textContent = mod.licao.pergunta;
     $("barraLicao").style.width = "0%";
@@ -1377,8 +2490,8 @@
   ];
 
   function verificarResposta() {
-    const modulos = getModulos();
-    const mod = modulos.find(m => m.id === moduloAtualId);
+    const modulosTodos = getModulos();
+    const mod = modulosTodos.find(m => m.id === moduloAtualId);
     const fb = $("boxFeedback");
     const opts = document.querySelectorAll("#opcoesLicao .opt");
     $("opcoesLicao").classList.add("locked");
@@ -1397,7 +2510,7 @@
         state.concluidos.push(mod.id);
         ultimoConcluido = mod.id;
       }
-      if (state.moduloDesbloqueado < modulos.length && mod.id === state.moduloDesbloqueado) {
+      if (state.moduloDesbloqueado < modulosTodos.length && mod.id === state.moduloDesbloqueado) {
         state.moduloDesbloqueado++;
         ultimoDesbloqueado = state.moduloDesbloqueado;
       }
@@ -1438,31 +2551,74 @@
   function continuarAposAcerto() {
     fecharSheet();
     irPara("telaTrilha");
-    const modulos = getModulos();
-    if (state.concluidos.length === modulos.length && !state.trilhaCelebrada) {
+    const modulosTodos = getModulos();
+    if (!state.unidadesCelebradas) state.unidadesCelebradas = [];
+
+    // Checagem de conclusão de cada nível/unidade
+    if (moduloAtualId === 5 && !state.unidadesCelebradas.includes(1)) {
+      state.unidadesCelebradas.push(1);
+      state.unidadeAtiva = 2;
+      salvarProgressoTema();
+      setTimeout(() => mostrarCelebracaoUnidade(1), 350);
+      return;
+    }
+    if (moduloAtualId === 10 && !state.unidadesCelebradas.includes(2)) {
+      state.unidadesCelebradas.push(2);
+      state.unidadeAtiva = 3;
+      salvarProgressoTema();
+      setTimeout(() => mostrarCelebracaoUnidade(2), 350);
+      return;
+    }
+    if (state.concluidos.length === modulosTodos.length && !state.trilhaCelebrada) {
       state.trilhaCelebrada = true;
       salvarProgressoTema();
       setTimeout(mostrarCelebracao, 350);
     }
   }
 
-  /* ---------- Celebração de conclusão ---------- */
+  /* ---------- Celebração de unidade / trilha ---------- */
+  function mostrarCelebracaoUnidade(numUnidade) {
+    const tema = state.tema || temas[0];
+    const titulo = numUnidade === 1 ? "🌱 Nível Fácil Concluído!" : "⚡ Nível Intermediário Concluído!";
+    const desc = numUnidade === 1
+      ? `Parabéns! Você completou os 5 módulos do Nível Fácil de ${tema}. O Nível Intermediário com mais 5 perguntas acaba de ser desbloqueado!`
+      : `Sensacional! Você concluiu os 10 módulos de ${tema}. O Nível Difícil / Avançado com os últimos 5 desafios acaba de ser desbloqueado!`;
+
+    $("celebTitulo").textContent = titulo;
+    $("celebDesc").innerHTML = desc;
+    $("celebTema").textContent = tema;
+    if ($("celebIcone")) $("celebIcone").textContent = numUnidade === 1 ? "🌱" : "⚡";
+    $("celebXP").textContent = state.xp;
+    $("celebStreak").textContent = state.sequencia;
+    $("celebMods").textContent = `${state.concluidos.length}/15`;
+    $("celebracao").classList.add("show");
+    setBot("botCelebracao", "star");
+    som.fanfarra();
+    chuvaConfete(180);
+    setTimeout(() => confete(innerWidth / 2, innerHeight * 0.4, 80, 1.0), 250);
+    setTimeout(() => $("btnFecharCelebracao").focus({ preventScroll: true }), 400);
+  }
+
   function mostrarCelebracao() {
     const modulos = getModulos();
-    $("celebTema").textContent = state.tema || temas[0];
+    $("celebTitulo").textContent = "🏆 Trilha Concluída!";
+    $("celebDesc").innerHTML = `Parabéns! Você dominou todos os 15 módulos (Fácil, Intermediário e Avançado) de <strong style="color:var(--text)">${state.tema || temas[0]}</strong>.`;
+    if ($("celebIcone")) $("celebIcone").textContent = "🏆";
     $("celebXP").textContent = state.xp;
     $("celebStreak").textContent = state.sequencia;
     $("celebMods").textContent = `${state.concluidos.length}/${modulos.length}`;
     $("celebracao").classList.add("show");
     setBot("botCelebracao", "star");
     som.fanfarra();
-    chuvaConfete(200);
-    setTimeout(() => confete(innerWidth / 2, innerHeight * 0.4, 90, 1.1), 250);
+    chuvaConfete(220);
+    setTimeout(() => confete(innerWidth / 2, innerHeight * 0.4, 100, 1.2), 250);
     setTimeout(() => $("btnFecharCelebracao").focus({ preventScroll: true }), 400);
   }
 
   function fecharCelebracao() {
     $("celebracao").classList.remove("show");
+    renderTrilha();
+    rolarParaAtual();
   }
 
   /* ---------- Perfil ---------- */
@@ -1473,7 +2629,7 @@
     $("streakPerfil").textContent = state.sequencia;
     $("temaPerfil").textContent = state.tema || temas[0];
     const pct = Math.round((state.concluidos.length / modulos.length) * 100);
-    $("pctTexto").textContent = `${pct}% da trilha concluída`;
+    $("pctTexto").textContent = `${state.concluidos.length}/${modulos.length} lições concluídas (${pct}%)`;
     $("pctBarra").style.width = "0%";
     requestAnimationFrame(() => requestAnimationFrame(() => { $("pctBarra").style.width = `${pct}%`; }));
     $("iaPerfil").textContent =
@@ -1494,7 +2650,9 @@
     }
 
     $("badge1").classList.toggle("earned", state.primeiraLicaoFeita);
-    $("badge2").classList.toggle("earned", state.concluidos.length === modulos.length);
+    $("badge2").classList.toggle("earned", state.concluidos.filter(id => id <= 5).length === 5);
+    $("badge3").classList.toggle("earned", state.concluidos.filter(id => id <= 10).length >= 10);
+    $("badge4").classList.toggle("earned", state.concluidos.length === modulos.length);
     setBot("botPerfilTopo", "happy");
   }
 
