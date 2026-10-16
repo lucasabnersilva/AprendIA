@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AprendIA</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background: #f1f5f9; color: #1e293b; display: flex; justify-content: center; min-height: 100vh; }
+    .app { width: 100%; max-width: 480px; background: #fff; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
+    header { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fff; position: sticky; top: 0; }
+    .logo { font-weight: 800; font-size: 1.2rem; color: #4f46e5; }
+    .top-stats { display: flex; gap: 8px; font-size: 0.85rem; font-weight: 700; }
+    .pill { background: #f1f5f9; padding: 6px 10px; border-radius: 99px; }
+    nav { display: flex; border-bottom: 1px solid #e2e8f0; }
+    nav button { flex: 1; padding: 12px; border: none; background: #fff; font-weight: 700; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; }
+    nav button.active { color: #4f46e5; border-bottom-color: #4f46e5; }
+    main { padding: 20px 16px; flex: 1; }
+    .screen { display: none; flex-direction: column; gap: 16px; }
+    .screen.active { display: flex; }
+    h1 { font-size: 1.3rem; }
+    p { color: #475569; font-size: 0.95rem; line-height: 1.4; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #4f46e5; color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer; }
+    .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+    .btn-outline { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .opt { padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; background: #fff; text-align: left; font-weight: 600; cursor: pointer; }
+    .opt.selected { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+    .trail { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 10px 0; }
+    .mod-btn { width: 100%; padding: 16px; border-radius: 12px; border: none; font-weight: 700; font-size: 1rem; text-align: center; }
+    .mod-btn.unlocked { background: #4f46e5; color: #fff; cursor: pointer; }
+    .mod-btn.done { background: #16a34a; color: #fff; cursor: pointer; }
+    .mod-btn.locked { background: #cbd5e1; color: #64748b; cursor: not-allowed; }
+    .line { width: 4px; height: 14px; background: #cbd5e1; }
+    .ai-box { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; padding: 12px; border-radius: 10px; font-size: 0.9rem; }
+    .feedback { padding: 12px; border-radius: 10px; font-weight: 700; text-align: center; display: none; }
+    .feedback.ok { display: block; background: #dcfce7; color: #166534; }
+    .feedback.err { display: block; background: #fee2e2; color: #991b1b; }
+    .bar-bg { background: #e2e8f0; height: 14px; border-radius: 99px; overflow: hidden; }
+    .bar-fill { background: #16a34a; height: 100%; width: 0%; transition: width 0.3s; }
+    .card { padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; font-size: 0.95rem; font-weight: 600; }
+    .badges { display: flex; gap: 10px; }
+    .badge { flex: 1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; text-align: center; font-size: 0.85rem; font-weight: 700; opacity: 0.4; }
+    .badge.earned { opacity: 1; background: #f0fdf4; border-color: #86efac; color: #166534; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Topo com indicador de XP e sequência de dias -->
+  <header>
+    <div class="logo">AprendIA</div>
+    <div class="top-stats" id="topStats" style="display:none;">
+      <span class="pill">🔥 <span id="streakVal">1</span> dia(s)</span>
+      <span class="pill">⭐ <span id="xpVal">0</span> XP</span>
+    </div>
+  </header>
+
+  <!-- Navegação acessível a qualquer momento após login -->
+  <nav id="mainNav" style="display:none;">
+    <button id=\"navTrilha\" onclick="irPara('telaTrilha')">Trilha</button>
+    <button id=\"navPerfil\" onclick="irPara('telaPerfil')">Progresso / Perfil</button>
+  </nav>
+
+  <main>
+    <!-- Login Simulado -->
+    <section id="telaLogin" class="screen active">
+      <h1>Bem-vindo ao AprendIA</h1>
+      <p>Aprenda habilidades tecnológicas básicas a avançadas através de trilhas curtas.</p>
+      <button class="btn" onclick="entrar()">Entrar</button>
+    </section>
+
+    <!-- Tela 1a: Onboarding - Escolha do tema -->
+    <section id="telaTema" class="screen">
+      <h1>O que você quer aprender?</h1>
+      <div class="options" id="listaTemas"></div>
+      <button class="btn" id="btnContinuarTema" disabled onclick="iniciarTeste()">Continuar</button>
+    </section>
+
+    <!-- Tela 1b: Onboarding - Teste de nivelamento -->
+    <section id="telaTeste" class="screen">
+      <p id="progressoTeste"></p>
+      <h1 id="perguntaTeste"></h1>
+      <div class="options" id="opcoesTeste"></div>
+      <button class="btn" id="btnProxTeste" disabled onclick="proximaPerguntaTeste()">Confirmar</button>
+      <button class="btn btn-outline" onclick="pularTeste()">Pular teste</button>
+    </section>
+
+    <!-- Tela 1c: Resultado do teste -> ponto de partida -->
+    <section id="telaResultado" class="screen">
+      <h1>Resultado do nivelamento</h1>
+      <p id="msgResultado"></p>
+      <button class="btn" onclick="irPara('telaTrilha')">Ir para a Trilha</button>
+    </section>
+
+    <!-- Tela 2: Trilha (tela inicial / home) -->
+    <section id="telaTrilha" class="screen">
+      <h1>Sua Trilha: <span id="nomeTemaTrilha"></span></h1>
+      <div class="ai-box" id="iaTrilha"></div>
+      <div class="trail" id="mapaModulos"></div>
+    </section>
+
+    <!-- Tela 3 e Tela 4: Lição + Feedback na própria tela -->
+    <section id="telaLicao" class="screen">
+      <p id="tituloModuloLicao"></p>
+      <h1 id="perguntaLicao"></h1>
+      <div class="options" id="opcoesLicao"></div>
+      <div id="boxFeedback" class="feedback"></div>
+      <button class="btn" id="btnVerificar" disabled onclick="verificarResposta()">Verificar resposta</button>
+      <button class="btn" id="btnVoltarTrilha" style="display:none;" onclick="irPara('telaTrilha')">Voltar para a Trilha</button>
+    </section>
+
+    <!-- Tela 5: Progresso / Perfil -->
+    <section id="telaPerfil" class="screen">
+      <h1>Progresso / Perfil</h1>
+      <div class="card">XP total acumulado: <span id="xpPerfil">0</span> XP</div>
+
+      <div>
+        <p style="margin-bottom:6px; font-weight:700;">Em andamento: <span id="pctTexto">0% da trilha concluída</span></p>
+        <div class="bar-bg"><div class="bar-fill" id="pctBarra"></div></div>
+      </div>
+
+      <div class="ai-box" id="iaPerfil"></div>
+
+      <h1>O que você já sabe fazer</h1>
+      <div class="options" id="listaCompetencias"></div>
+
+      <h1>Conquistas</h1>
+      <div class="badges">
+        <div class="badge" id="badge1">🏅 Primeira lição concluída</div>
+        <div class="badge" id="badge2">🏆 Trilha concluída</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Dados fixos/mockados no front-end
+  const temas = [
+    "Informática básica",
+    "Uso do celular",
+    "Ferramentas de trabalho",
+    "Internet segura"
+  ];
+
+  // 6 perguntas de múltipla escolha (entre 5 a 7 perguntas, misturando dificuldades)
+  const perguntasNivelamento = [
+    { q: "Você já usou algum editor de texto?", opts: ["Sim, já criei e editei textos", "Só abri para ler", "Nunca usei"], correta: 0 },
+    { q: "O que é uma planilha?", opts: ["Uma tabela organizada em linhas e colunas para dados e cálculos", "Um programa de editar fotos", "Um antivírus"], correta: 0 },
+    { q: "Para que serve um navegador de internet?", opts: ["Acessar sites e páginas na web", "Aumentar a bateria do celular", "Imprimir folhas sem impressora"], correta: 0 },
+    { q: "Você sabe o que é uma fórmula de soma no Excel?", opts: ["Sim, como =SOMA(A1:A5)", "Acho que é um botão de desligar", "Não sei o que é"], correta: 0 },
+    { q: "Qual atalho costuma copiar um texto selecionado no computador?", opts: ["Ctrl + C", "Alt + F4", "Ctrl + Z"], correta: 0 },
+    { q: "O que caracteriza uma senha mais segura?", opts: ["Misturar letras, números e símbolos", "Usar a data de nascimento", "Usar '123456'"], correta: 0 }
+  ];
+
+  // 5 módulos fixos e 3 lições mockadas (múltipla escolha e associação de imagem ao termo)
+  const modulos = [
+    {
+      id: 1,
+      nome: "Módulo 1 (Básico)",
+      competencia: "Você já sabe usar um editor de texto e comandos básicos",
+      licao: {
+        pergunta: "Associe a imagem ao termo correto: 💾",
+        opcoes: ["Salvar arquivo", "Excluir conta", "Aumentar volume"],
+        correta: 0
+      }
+    },
+    {
+      id: 2,
+      nome: "Módulo 2 (Básico II)",
+      competencia: "Você já sabe navegar com segurança na internet",
+      licao: {
+        pergunta: "Associe a imagem ao termo correto: 🔒",
+        opcoes: ["Conexão segura / Cadeado de segurança", "Bateria fraca", "Sem internet"],
+        correta: 0
+      }
+    },
+    {
+      id: 3,
+      nome: "Módulo 3 (Intermediário)",
+      competencia: "Você já sabe criar uma planilha com gráficos no Excel",
+      licao: {
+        pergunta: "Qual fórmula soma os valores de A1 até A5 em uma planilha?",
+        opcoes: ["=SOMA(A1:A5)", "=TEXTO(A1)", "=APAGAR(A1:A5)"],
+        correta: 0
+      }
+    },
+    {
+      id: 4,
+      nome: "Módulo 4 (Intermediário II)",
+      competencia: "Você já sabe montar uma apresentação no Power BI",
+      licao: {
+        pergunta: "Para que serve um painel visual (dashboard) no Power BI?",
+        opcoes: ["Visualizar dados e gráficos de forma clara", "Formatar o disco rígido", "Trocar a senha do Wi-Fi"],
+        correta: 0
+      }
+    },
+    {
+      id: 5,
+      nome: "Módulo 5 (Avançado)",
+      competencia: "Você já sabe programar um protótipo em Java",
+      licao: {
+        pergunta: "Qual estrutura guarda um valor na memória em um código de programação?",
+        opcoes: ["Variável", "Papel de parede", "Protetor de tela"],
+        correta: 0
+      }
+    }
+  ];
+
+  // Estado salvo apenas na sessão (sessionStorage)
+  let state = JSON.parse(sessionStorage.getItem("aprendia_state")) || {
+    logado: false,
+    tema: "",
+    moduloInicial: 1,
+    moduloDesbloqueado: 1,
+    concluidos: [],
+    xp: 0,
+    sequencia: 1,
+    primeiraLicaoFeita: false,
+    moduloDificuldade: "Módulo 1 (Básico)"
+  };
+
+  let idxTeste = 0;
+  let acertosTeste = 0;
+  let respTesteSel = null;
+  let moduloAtualId = null;
+  let respLicaoSel = null;
+
+  function salvarSessao() {
+    sessionStorage.setItem("aprendia_state", JSON.stringify(state));
+  }
+
+  function mostrarTela(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    document.getElementById("navTrilha").classList.toggle("active", id === "telaTrilha" || id === "telaLicao");
+    document.getElementById("navPerfil").classList.toggle("active", id === "telaPerfil");
+  }
+
+  function entrar() {
+    state.logado = true;
+    salvarSessao();
+    renderTemas();
+    mostrarTela("telaTema");
+  }
+
+  function renderTemas() {
+    const box = document.getElementById("listaTemas");
+    box.innerHTML = "";
+    temas.forEach(t => {
+      const b = document.createElement("button");
+      b.className = "opt" + (state.tema === t ? " selected" : "");
+      b.textContent = t;
+      b.onclick = () => {
+        state.tema = t;
+        document.getElementById("btnContinuarTema").disabled = false;
+        renderTemas();
+      };
+      box.appendChild(b);
+    });
+  }
+
+  function iniciarTeste() {
+    idxTeste = 0;
+    acertosTeste = 0;
+    renderPerguntaTeste();
+    mostrarTela("telaTeste");
+  }
+
+  function renderPerguntaTeste() {
+    respTesteSel = null;
+    document.getElementById("btnProxTeste").disabled = true;
+    const item = perguntasNivelamento[idxTeste];
+    document.getElementById("progressoTeste").textContent = `Pergunta ${idxTeste + 1} de ${perguntasNivelamento.length}`;
+    document.getElementById("perguntaTeste").textContent = item.q;
+    const box = document.getElementById("opcoesTeste");
+    box.innerHTML = "";
+    item.opts.forEach((op, i) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = op;
+      b.onclick = () => {
+        respTesteSel = i;
+        document.querySelectorAll("#opcoesTeste .opt").forEach((el, idx) => el.classList.toggle("selected", idx === i));
+        document.getElementById("btnProxTeste").disabled = false;
+      };
+      box.appendChild(b);
+    });
+  }
+
+  function proximaPerguntaTeste() {
+    if (respTesteSel === perguntasNivelamento[idxTeste].correta) acertosTeste++;
+    idxTeste++;
+    if (idxTeste < perguntasNivelamento.length) {
+      renderPerguntaTeste();
+    } else {
+      finalizarTeste(acertosTeste);
+    }
+  }
+
+  function pularTeste() {
+    finalizarTeste(0);
+  }
+
+  // Regra hardcoded do escopo: 0-2 -> Módulo 1 | 3-5 -> Módulo 3 | 6-7 -> Módulo 5
+  function finalizarTeste(acertos) {
+    let modInicio = 1;
+    if (acertos >= 6) modInicio = 5;
+    else if (acertos >= 3) modInicio = 3;
+    else modInicio = 1;
+
+    state.moduloInicial = modInicio;
+    state.moduloDesbloqueado = modInicio;
+    state.concluidos = [];
+    for (let i = 1; i < modInicio; i++) state.concluidos.push(i);
+    state.moduloDificuldade = `Módulo ${modInicio}`;
+    salvarSessao();
+
+    document.getElementById("topStats").style.display = "flex";
+    document.getElementById("mainNav").style.display = "flex";
+    document.getElementById("msgResultado").textContent =
+      `Você já manda bem no básico! Vamos começar em [Módulo ${modInicio}]`;
+    atualizarTopo();
+    mostrarTela("telaResultado");
+  }
+
+  function atualizarTopo() {
+    document.getElementById("xpVal").textContent = state.xp;
+    document.getElementById("streakVal").textContent = state.sequencia;
+  }
+
+  function irPara(idTela) {
+    document.getElementById("topStats").style.display = "flex";
+    document.getElementById("mainNav").style.display = "flex";
+    atualizarTopo();
+    if (idTela === "telaTrilha") renderTrilha();
+    if (idTela === "telaPerfil") renderPerfil();
+    mostrarTela(idTela);
+  }
+
+  function renderTrilha() {
+    document.getElementById("nomeTemaTrilha").textContent = state.tema || temas[0];
+    document.getElementById("iaTrilha").textContent =
+      `🤖 IA: "Notamos que você teve dificuldade em [${state.moduloDificuldade}]. Que tal revisar antes de avançar?"`;
+
+    const mapa = document.getElementById("mapaModulos");
+    mapa.innerHTML = "";
+    modulos.forEach((m, idx) => {
+      const concluido = state.concluidos.includes(m.id);
+      const desbloqueado = m.id <= state.moduloDesbloqueado;
+      const btn = document.createElement("button");
+      btn.className = "mod-btn " + (concluido ? "done" : desbloqueado ? "unlocked" : "locked");
+      btn.textContent = m.nome + (concluido ? " ✓" : desbloqueado ? "" : " 🔒");
+      btn.disabled = !desbloqueado;
+      if (desbloqueado) btn.onclick = () => abrirLicao(m.id);
+      mapa.appendChild(btn);
+
+      if (idx < modulos.length - 1) {
+        const line = document.createElement("div");
+        line.className = "line";
+        mapa.appendChild(line);
+      }
+    });
+  }
+
+  function abrirLicao(idMod) {
+    moduloAtualId = idMod;
+    respLicaoSel = null;
+    const mod = modulos.find(m => m.id === idMod);
+    document.getElementById("tituloModuloLicao").textContent = mod.nome;
+    document.getElementById("perguntaLicao").textContent = mod.licao.pergunta;
+    document.getElementById("boxFeedback").className = "feedback";
+    document.getElementById("btnVerificar").style.display = "block";
+    document.getElementById("btnVerificar").disabled = true;
+    document.getElementById("btnVoltarTrilha").style.display = "none";
+
+    const box = document.getElementById("opcoesLicao");
+    box.innerHTML = "";
+    mod.licao.opcoes.forEach((op, i) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = op;
+      b.onclick = () => {
+        respLicaoSel = i;
+        document.querySelectorAll("#opcoesLicao .opt").forEach((el, idx) => el.classList.toggle("selected", idx === i));
+        document.getElementById("btnVerificar").disabled = false;
+      };
+      box.appendChild(b);
+    });
+    mostrarTela("telaLicao");
+  }
+
+  function verificarResposta() {
+    const mod = modulos.find(m => m.id === moduloAtualId);
+    const fb = document.getElementById("boxFeedback");
+    if (respLicaoSel === mod.licao.correta) {
+      fb.textContent = "Muito bem! +10 XP";
+      fb.className = "feedback ok";
+      state.xp += 10;
+      state.primeiraLicaoFeita = true;
+      if (!state.concluidos.includes(mod.id)) state.concluidos.push(mod.id);
+      if (state.moduloDesbloqueado < modulos.length && mod.id === state.moduloDesbloqueado) {
+        state.moduloDesbloqueado++;
+      }
+      salvarSessao();
+      atualizarTopo();
+      document.getElementById("btnVerificar").style.display = "none";
+      document.getElementById("btnVoltarTrilha").style.display = "block";
+    } else {
+      fb.textContent = "Quase lá! Tente de novo";
+      fb.className = "feedback err";
+      state.moduloDificuldade = mod.nome;
+      salvarSessao();
+    }
+  }
+
+  function renderPerfil() {
+    document.getElementById("xpPerfil").textContent = state.xp;
+    const pct = Math.round((state.concluidos.length / modulos.length) * 100);
+    document.getElementById("pctTexto").textContent = `${pct}% da trilha concluída`;
+    document.getElementById("pctBarra").style.width = `${pct}%`;
+    document.getElementById("iaPerfil").textContent =
+      `🤖 IA: "Notamos que você teve dificuldade em [${state.moduloDificuldade}]. Que tal revisar antes de avançar?"`;
+
+    const lista = document.getElementById("listaCompetencias");
+    lista.innerHTML = "";
+    const desbloqueadas = modulos.filter(m => state.concluidos.includes(m.id));
+    if (desbloqueadas.length === 0) {
+      lista.innerHTML = `<div class="card">Conclua um módulo para desbloquear suas competências.</div>`;
+    } else {
+      desbloqueadas.forEach(m => {
+        const d = document.createElement("div");
+        d.className = "card";
+        d.textContent = `✅ "${m.competencia}"`;
+        lista.appendChild(d);
+      });
+    }
+
+    document.getElementById("badge1").classList.toggle("earned", state.primeiraLicaoFeita);
+    document.getElementById("badge2").classList.toggle("earned", state.concluidos.length === modulos.length);
+  }
+</script>
+</body>
+</html>

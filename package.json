@@ -1,0 +1,20 @@
+{
+  "name": "aprendia",
+  "version": "1.0.0",
+  "description": "Plataforma gamificada de letramento digital e tecnologia com IA.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "letramento-digital",
+    "educacao",
+    "gamificacao",
+    "aprendizagem"
+  ],
+  "author": "Lucas Abner Silva",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
