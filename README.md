@@ -1,12 +1,12 @@
 # AprendIA 🚀
 
-Plataforma interativa e gamificada de letramento digital e aprendizado de tecnologia através de trilhas curtas e adaptativas.
+Plataforma interativa  de letramento digital e aprendizado de tecnologia através de trilhas curtas e adaptativas.
 
 ## ✨ Funcionalidades
 
 - **Onboarding e Nivelamento Dinâmico**: Teste de nivelamento inicial com perguntas de múltipla escolha para determinar automaticamente o ponto de partida ideal na trilha.
 - **Trilha Adaptativa de Aprendizado**: Módulos do nível básico ao avançado (Informática básica, segurança na internet, planilhas, dashboards e programação).
-- **Gamificação Completa**:
+- **Gameficação Completa**:
   - Pontuação por experiência (**XP**)
   - Sequência de dias ativos (**Streak**)
   - Sistema de desbloqueio progressivo de lições
