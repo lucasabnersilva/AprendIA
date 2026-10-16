@@ -169,6 +169,13 @@
     .unit-banner h1 { font-size: 1.15rem; }
     .unit-banner h1 span { color: var(--cyan); }
     .unit-banner .unit-ico { font-size: 1.8rem; margin-left: auto; }
+    .btn-trocar-trilha {
+      display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 4px 10px;
+      border-radius: 99px; background: rgba(0, 240, 255, 0.1); border: 1px solid var(--line);
+      color: var(--cyan); font-size: .72rem; font-weight: 800; cursor: pointer; transition: all .2s;
+    }
+    .btn-trocar-trilha:hover { background: rgba(0, 240, 255, 0.2); }
+    .btn-trocar-trilha:active { transform: scale(.96); }
     .board { position: relative; width: 300px; margin: 8px auto 0; }
     .board-path { position: absolute; left: 0; top: 0; overflow: visible; }
     .board-path path { fill: none; stroke-width: 10; stroke-linecap: round; stroke-dasharray: 1 22; }
@@ -402,8 +409,9 @@
         <div>
           <p class="eyebrow">Unidade 1</p>
           <h1>Sua Trilha: <span id="nomeTemaTrilha"></span></h1>
+          <button class="btn-trocar-trilha" onclick="trocarTrilha()">🔄 Trocar de tema</button>
         </div>
-        <span class="unit-ico" aria-hidden="true">🚀</span>
+        <span class="unit-ico" id="unitIco" aria-hidden="true">🚀</span>
       </div>
       <div class="ai-box">
         <div class="bot-slot bot-xs" id="botTrilha" data-state="idle"></div>
@@ -516,79 +524,310 @@
     "Internet segura": "🛡️"
   };
 
-  // 6 perguntas de múltipla escolha (entre 5 a 7 perguntas, misturando dificuldades)
-  const perguntasNivelamento = [
-    { q: "Você já usou algum editor de texto?", opts: ["Sim, já criei e editei textos", "Só abri para ler", "Nunca usei"], correta: 0 },
-    { q: "O que é uma planilha?", opts: ["Uma tabela organizada em linhas e colunas para dados e cálculos", "Um programa de editar fotos", "Um antivírus"], correta: 0 },
-    { q: "Para que serve um navegador de internet?", opts: ["Acessar sites e páginas na web", "Aumentar a bateria do celular", "Imprimir folhas sem impressora"], correta: 0 },
-    { q: "Você sabe o que é uma fórmula de soma no Excel?", opts: ["Sim, como =SOMA(A1:A5)", "Acho que é um botão de desligar", "Não sei o que é"], correta: 0 },
-    { q: "Qual atalho costuma copiar um texto selecionado no computador?", opts: ["Ctrl + C", "Alt + F4", "Ctrl + Z"], correta: 0 },
-    { q: "O que caracteriza uma senha mais segura?", opts: ["Misturar letras, números e símbolos", "Usar a data de nascimento", "Usar '123456'"], correta: 0 }
-  ];
+  // Trilhas temáticas completas (Nivelamento com 6 perguntas + 5 Módulos progressivos)
+  const trilhasPorTema = {
+    "Informática básica": {
+      nivelamento: [
+        { q: "Qual dispositivo é usado para apontar e clicar na tela do computador?", opts: ["Mouse", "Teclado", "Gabinete"], correta: 0 },
+        { q: "Qual atalho de teclado é amplamente utilizado para copiar arquivos ou textos?", opts: ["Ctrl + C", "Alt + F4", "Ctrl + Z"], correta: 0 },
+        { q: "O que é o Sistema Operacional (ex: Windows, Linux, macOS)?", opts: ["O software principal que gerencia o hardware e permite rodar outros programas", "Um tipo de cabo de rede de internet", "Um jogo instalado de fábrica"], correta: 0 },
+        { q: "Em uma planilha eletrônica (Excel/Sheets), como se inicia qualquer cálculo ou fórmula?", opts: ["Com o sinal de igual '='", "Com a palavra 'CALCULAR'", "Com dois pontos ':'"], correta: 0 },
+        { q: "Qual é a principal função da Memória RAM em um computador?", opts: ["Armazenar temporariamente dados dos programas em execução rápida", "Guardar fotos para sempre mesmo desligado", "Aumentar a velocidade da internet contratada"], correta: 0 },
+        { q: "O que é um arquivo compactado com extensão .zip ou .rar?", opts: ["Um pacote que reúne e reduz o tamanho de arquivos para facilitar o envio", "Um vírus que danifica o disco rígido", "Uma imagem em altíssima resolução"], correta: 0 }
+      ],
+      modulos: [
+        {
+          id: 1,
+          nome: "Módulo 1 (Fundamentos do PC)",
+          icone: "🖱️",
+          competencia: "Você domina peças do computador, periféricos e uso do mouse e teclado",
+          licao: {
+            pergunta: "Qual componente é considerado o 'cérebro' do computador, responsável por processar todas as instruções?",
+            opcoes: ["Processador (CPU)", "Monitor de vídeo", "Fonte de alimentação"],
+            correta: 0,
+            dica: "A CPU (Central Processing Unit) executa as operações lógicas e comandos de todos os programas."
+          }
+        },
+        {
+          id: 2,
+          nome: "Módulo 2 (Sistema e Pastas)",
+          icone: "📁",
+          competencia: "Você sabe organizar pastas, gerenciar arquivos e usar atalhos essenciais",
+          licao: {
+            pergunta: "Se você apagou um arquivo sem querer no computador, onde normalmente ele pode ser recuperado?",
+            opcoes: ["Lixeira", "Painel de Controle", "Placa de Vídeo"],
+            correta: 0,
+            dica: "Arquivos excluídos ficam guardados na Lixeira e podem ser restaurados antes do esvaziamento."
+          }
+        },
+        {
+          id: 3,
+          nome: "Módulo 3 (Documentos & Textos)",
+          icone: "📝",
+          competencia: "Você sabe formatar textos, criar cabeçalhos e salvar documentos profissionais",
+          licao: {
+            pergunta: "Qual formato é o mais recomendado para enviar um documento garantindo que a formatação não mude em nenhum aparelho?",
+            opcoes: ["PDF (.pdf)", "Bloco de Notas (.txt)", "Arquivo temporário (.tmp)"],
+            correta: 0,
+            dica: "O formato PDF preserva fontes, imagens e alinhamento exatamente como foram criados."
+          }
+        },
+        {
+          id: 4,
+          nome: "Módulo 4 (Planilhas Inteligentes)",
+          icone: "📊",
+          competencia: "Você já sabe criar fórmulas, somar colunas e gerar gráficos no Excel",
+          licao: {
+            pergunta: "Qual fórmula calcula automaticamente a média dos valores das células B2 até B10 no Excel?",
+            opcoes: ["=MÉDIA(B2:B10)", "=DIVIDIR(B2:B10)", "=CONTAR(B2+B10)"],
+            correta: 0,
+            dica: "A fórmula =MÉDIA(início:fim) soma todos os valores do intervalo e divide pela quantidade."
+          }
+        },
+        {
+          id: 5,
+          nome: "Módulo 5 (Backup e Nuvem)",
+          icone: "☁️",
+          competencia: "Você sabe proteger seus dados com backup sincronizado em nuvem e segurança de armazenamento",
+          licao: {
+            pergunta: "Qual a maior vantagem de armazenar arquivos na nuvem (como Google Drive, OneDrive) em vez de apenas no pendrive?",
+            opcoes: ["Acesso de qualquer lugar com internet e proteção contra perda física do aparelho", "Não precisar de senha de acesso", "Fazer o computador ligar mais rápido"],
+            correta: 0,
+            dica: "A nuvem salva cópias em servidores remotos seguros, protegendo seus arquivos caso seu computador quebre."
+          }
+        }
+      ]
+    },
 
-  // 5 módulos fixos e 3 lições mockadas (múltipla escolha e associação de imagem ao termo)
-  const modulos = [
-    {
-      id: 1,
-      nome: "Módulo 1 (Básico)",
-      icone: "💾",
-      competencia: "Você já sabe usar um editor de texto e comandos básicos",
-      licao: {
-        pergunta: "Associe a imagem ao termo correto: 💾",
-        opcoes: ["Salvar arquivo", "Excluir conta", "Aumentar volume"],
-        correta: 0,
-        dica: "O disquete 💾 é o símbolo clássico do botão Salvar nos programas."
-      }
+    "Uso do celular": {
+      nivelamento: [
+        { q: "Quais são os dois principais sistemas operacionais móveis do mercado atual?", opts: ["Android e iOS", "Windows e macOS", "Linux e DOS"], correta: 0 },
+        { q: "Onde os usuários de Android e iPhone normalmente baixam aplicativos oficiais?", opts: ["Google Play Store e Apple App Store", "Pelo Painel de Controle", "Por mensagem de texto SMS"], correta: 0 },
+        { q: "O que é um aplicativo mobile híbrido ou cross-platform?", opts: ["Um app com código único que roda tanto em Android quanto em iOS", "Um app que só funciona conectado na tomada", "Um app feito exclusivamente para relógios"], correta: 0 },
+        { q: "Qual linguagem e framework são muito populares para criar apps mobile para iOS e Android simultaneamente?", opts: ["Dart com Flutter (ou JS com React Native)", "HTML puro no Bloco de Notas", "C++ clássico para navegador"], correta: 0 },
+        { q: "Para que serve a tela de permissões quando um app pede acesso à câmera ou GPS?", opts: ["Garantir a privacidade do usuário, liberando hardware apenas com autorização", "Aumentar a resolução da tela do celular", "Instalar vírus no aparelho"], correta: 0 },
+        { q: "O que é uma API REST no contexto de um aplicativo mobile?", opts: ["Uma ponte de comunicação que permite o app no celular trocar dados com o servidor na nuvem", "O botão físico de volume do celular", "A tela de toque sensível aos dedos"], correta: 0 }
+      ],
+      modulos: [
+        {
+          id: 1,
+          nome: "Módulo 1 (Design Mobile & Telas)",
+          icone: "📱",
+          competencia: "Você entende o ecossistema mobile, telas de toque e design responsivo",
+          licao: {
+            pergunta: "O que significa 'Design Responsivo' no desenvolvimento de telas de aplicativos?",
+            opcoes: ["Adaptar o layout para que fique perfeito em diferentes tamanhos e orientações de tela", "Fazer o celular vibrar quando o botão for clicado", "Exigir que o usuário compre um celular novo"],
+            correta: 0,
+            dica: "Telas responsivas se reorganizam com elegância em qualquer tamanho de smartphone ou tablet."
+          }
+        },
+        {
+          id: 2,
+          nome: "Módulo 2 (Nativo vs Cross-Platform)",
+          icone: "⚛️",
+          competencia: "Você sabe a diferença entre apps nativos (Kotlin/Swift) e cross-platform (React Native/Flutter)",
+          licao: {
+            pergunta: "Se uma equipe precisa lançar um app rapidamente para Android e iOS usando uma base comum em JavaScript, qual tecnologia é ideal?",
+            opcoes: ["React Native", "Excel VBA", "Photoshop Mobile"],
+            correta: 0,
+            dica: "React Native permite construir apps para iOS e Android usando JavaScript e a filosofia do React."
+          }
+        },
+        {
+          id: 3,
+          nome: "Módulo 3 (Consumo de APIs & JSON)",
+          icone: "🔄",
+          competencia: "Você sabe integrar o aplicativo com servidores externos usando JSON e requisições HTTP",
+          licao: {
+            pergunta: "Qual formato de dados leve, em formato chave-valor, é o padrão mais usado para o app mobile conversar com a nuvem?",
+            opcoes: ["JSON", "Arquivo BMP de imagem", "Documento DOCX"],
+            correta: 0,
+            dica: "JSON (JavaScript Object Notation) é universal, legível e leve para trafegar dados em redes móveis."
+          }
+        },
+        {
+          id: 4,
+          nome: "Módulo 4 (Armazenamento & Push)",
+          icone: "🔔",
+          competencia: "Você domina notificações Push e persistência de dados local (AsyncStorage/SQLite)",
+          licao: {
+            pergunta: "Qual recurso permite que um aplicativo avise o usuário sobre uma nova mensagem mesmo quando o app está fechado?",
+            opcoes: ["Notificação Push (Push Notification)", "Bluetooth sempre ligado", "Reinicialização forçada do celular"],
+            correta: 0,
+            dica: "Serviços como Firebase Cloud Messaging (FCM) e Apple APNs entregam notificações em segundo plano."
+          }
+        },
+        {
+          id: 5,
+          nome: "Módulo 5 (Build & Publicação)",
+          icone: "🚀",
+          competencia: "Você sabe gerar pacotes (AAB, IPA), assinar certificados e publicar na Google Play e App Store",
+          licao: {
+            pergunta: "Qual formato moderno do Google é obrigatório para publicar apps na Google Play, otimizando o tamanho do download para cada aparelho?",
+            opcoes: ["Android App Bundle (.aab)", "Arquivo de texto (.txt)", "Arquivo executável do Windows (.exe)"],
+            correta: 0,
+            dica: "O .aab permite que a loja gere pacotes sob medida com apenas os recursos necessários para o aparelho do usuário."
+          }
+        }
+      ]
     },
-    {
-      id: 2,
-      nome: "Módulo 2 (Básico II)",
-      icone: "🛡️",
-      competencia: "Você já sabe navegar com segurança na internet",
-      licao: {
-        pergunta: "Associe a imagem ao termo correto: 🔒",
-        opcoes: ["Conexão segura / Cadeado de segurança", "Bateria fraca", "Sem internet"],
-        correta: 0,
-        dica: "O cadeado ao lado do endereço do site indica uma conexão protegida (HTTPS)."
-      }
+
+    "Ferramentas de trabalho": {
+      nivelamento: [
+        { q: "Qual é o editor de código mais popular do mundo, desenvolvido pela Microsoft?", opts: ["Visual Studio Code (VS Code)", "Bloco de Notas", "Microsoft Paint"], correta: 0 },
+        { q: "Para que serve a ferramenta Git no dia a dia do desenvolvedor?", opts: ["Controlar versões e histórico de alterações do código-fonte", "Tirar print da tela do computador", "Limpar a poeira do teclado"], correta: 0 },
+        { q: "Qual é a principal plataforma em nuvem para hospedar repositórios Git e colaborar em equipe?", opts: ["GitHub", "Instagram", "Spotify"], correta: 0 },
+        { q: "Para que os desenvolvedores utilizam o Terminal ou Prompt de Comando?", opts: ["Executar comandos diretos, scripts e gerenciar servidores com rapidez", "Trocar o papel de parede", "Apenas para ver filmes"], correta: 0 },
+        { q: "Qual ferramenta é mundialmente usada para testar e documentar requisições para APIs REST?", opts: ["Postman", "WinRAR", "Windows Media Player"], correta: 0 },
+        { q: "O que é o Docker no ambiente de desenvolvimento?", opts: ["Uma plataforma de contêineres que empacota o app e suas dependências para rodar igual em qualquer lugar", "Um antivírus para computador", "Um teclado mecânico especial"], correta: 0 }
+      ],
+      modulos: [
+        {
+          id: 1,
+          nome: "Módulo 1 (VS Code & Produtividade)",
+          icone: "💻",
+          competencia: "Você domina o VS Code, extensões, atalhos de depuração e terminal integrado",
+          licao: {
+            pergunta: "Qual atalho no VS Code abre rapidamente a paleta de comandos para buscar arquivos e ações?",
+            opcoes: ["Ctrl + Shift + P (ou Cmd+Shift+P)", "Ctrl + Alt + Del", "Tecla F13"],
+            correta: 0,
+            dica: "O Command Palette (Ctrl+Shift+P) é o coração da produtividade e comandos rápidos no VS Code."
+          }
+        },
+        {
+          id: 2,
+          nome: "Módulo 2 (Git: Commits & Branches)",
+          icone: "🌿",
+          competencia: "Você sabe versionar projetos, criar branches e salvar commits com boas mensagens",
+          licao: {
+            pergunta: "Qual comando do Git envia suas alterações e commits locais para o repositório remoto no GitHub?",
+            opcoes: ["git push", "git delete", "git download"],
+            correta: 0,
+            dica: "O comando 'git push' empurra os commits do seu computador para o servidor remoto."
+          }
+        },
+        {
+          id: 3,
+          nome: "Módulo 3 (GitHub & Pull Requests)",
+          icone: "🐙",
+          competencia: "Você sabe trabalhar em equipe com Pull Requests, Code Review e resolução de conflitos",
+          licao: {
+            pergunta: "No GitHub, o que é um Pull Request (PR)?",
+            opcoes: ["Uma proposta para revisar e mesclar alterações de uma branch para a branch principal", "Um pedido para excluir o repositório", "Uma cobrança de mensalidade da equipe"],
+            correta: 0,
+            dica: "O Pull Request permite que outros desenvolvedores revisem seu código antes dele ser incorporado ao projeto."
+          }
+        },
+        {
+          id: 4,
+          nome: "Módulo 4 (Testes de APIs no Postman)",
+          icone: "📬",
+          competencia: "Você sabe testar endpoints HTTP, verificar status codes (200, 404, 500) e automatizar chamadas",
+          licao: {
+            pergunta: "Qual método HTTP no Postman é usado convencionalmente para criar um novo registro no servidor?",
+            opcoes: ["POST", "GET", "DELETE"],
+            correta: 0,
+            dica: "POST envia dados no corpo da requisição para cadastrar novos recursos na API."
+          }
+        },
+        {
+          id: 5,
+          nome: "Módulo 5 (Docker & Contêineres)",
+          icone: "🐳",
+          competencia: "Você sabe criar Dockerfiles, subir contêineres e garantir ambientes padronizados",
+          licao: {
+            pergunta: "Qual o principal benefício de rodar sua aplicação dentro de um contêiner Docker?",
+            opcoes: ["Garantir que a aplicação funcione exatamente igual no computador do dev e no servidor em produção", "Fazer o código rodar sem eletricidade", "Eliminar a necessidade de escrever testes"],
+            correta: 0,
+            dica: "Contêineres empacotam código, bibliotecas e ambiente do sistema, eliminando o clássico 'na minha máquina funciona'."
+          }
+        }
+      ]
     },
-    {
-      id: 3,
-      nome: "Módulo 3 (Intermediário)",
-      icone: "📊",
-      competencia: "Você já sabe criar uma planilha com gráficos no Excel",
-      licao: {
-        pergunta: "Qual fórmula soma os valores de A1 até A5 em uma planilha?",
-        opcoes: ["=SOMA(A1:A5)", "=TEXTO(A1)", "=APAGAR(A1:A5)"],
-        correta: 0,
-        dica: "Fórmulas começam com = e a função SOMA recebe um intervalo, como A1:A5."
-      }
-    },
-    {
-      id: 4,
-      nome: "Módulo 4 (Intermediário II)",
-      icone: "📈",
-      competencia: "Você já sabe montar uma apresentação no Power BI",
-      licao: {
-        pergunta: "Para que serve um painel visual (dashboard) no Power BI?",
-        opcoes: ["Visualizar dados e gráficos de forma clara", "Formatar o disco rígido", "Trocar a senha do Wi-Fi"],
-        correta: 0,
-        dica: "Um dashboard reúne gráficos e indicadores para enxergar os dados de uma vez só."
-      }
-    },
-    {
-      id: 5,
-      nome: "Módulo 5 (Avançado)",
-      icone: "💻",
-      competencia: "Você já sabe programar um protótipo em Java",
-      licao: {
-        pergunta: "Qual estrutura guarda um valor na memória em um código de programação?",
-        opcoes: ["Variável", "Papel de parede", "Protetor de tela"],
-        correta: 0,
-        dica: "Pense numa caixinha com nome que guarda um valor para usar depois no código."
-      }
+
+    "Internet segura": {
+      nivelamento: [
+        { q: "O que você deve fazer ao receber um e-mail urgente de um banco pedindo para clicar em um link e digitar sua senha?", opts: ["Desconfiar de golpe (phishing) e nunca clicar no link", "Clicar rápido e digitar a senha solicitada", "Encaminhar para todos os contatos"], correta: 0 },
+        { q: "Qual é a recomendação essencial para criar senhas fortes e seguras?", opts: ["Usar frases longas misturando letras maiúsculas, minúsculas, números e símbolos", "Usar '123456' em todos os sites", "Colocar apenas o ano de nascimento"], correta: 0 },
+        { q: "O que é a Autenticação em Dois Fatores (2FA / MFA)?", opts: ["Uma camada extra de segurança que pede uma confirmação adicional (código no celular) além da senha", "Ter que digitar a mesma senha duas vezes seguidas", "Ter duas contas no mesmo site"], correta: 0 },
+        { q: "O que significa o cadeado fechado e o 'https://' no endereço de um site?", opts: ["A comunicação entre seu navegador e o site é criptografada e protegida contra interceptação", "O site é imune a qualquer vírus do mundo", "O site pertence ao governo federal"], correta: 0 },
+        { q: "O que é um ataque de Engenharia Social no contexto de cibersegurança?", opts: ["Manipular psicologicamente pessoas para que elas forneçam senhas ou dados confidenciais voluntariamente", "Construir pontes pela internet", "Consertar redes sociais com problemas técnicos"], correta: 0 },
+        { q: "O que é um ataque DDoS (Distributed Denial of Service)?", opts: ["Sobrecarga intencional de um servidor com tráfego maciço de computadores para derrubar o serviço", "Roubar a senha do Wi-Fi de um vizinho", "Apagar o disco rígido remotamente"], correta: 0 }
+      ],
+      modulos: [
+        {
+          id: 1,
+          nome: "Módulo 1 (Senhas & Higiene Digital)",
+          icone: "🔑",
+          competencia: "Você sabe criar senhas blindadas, usar gerenciadores de senhas e evitar reutilização",
+          licao: {
+            pergunta: "Por que nunca devemos usar a mesma senha em vários sites diferentes?",
+            opcoes: ["Se um dos sites sofrer vazamento de dados, os invasores terão acesso a todas as suas outras contas", "Porque o navegador de internet não permite", "Porque gasta mais memória do computador"],
+            correta: 0,
+            dica: "Invasores usam listas de senhas vazadas para tentar invadir e-mail, redes sociais e bancos (Credential Stuffing)."
+          }
+        },
+        {
+          id: 2,
+          nome: "Módulo 2 (Defesa contra Phishing)",
+          icone: "🎣",
+          competencia: "Você identifica e-mails, SMS e links fraudulentos antes de cair em armadilhas",
+          licao: {
+            pergunta: "Qual é um sinal clássico de uma mensagem de Phishing (golpe digital)?",
+            opcoes: ["Senso de urgência exagerado, erros de português e links para domínios estranhos", "Mensagens enviadas sem nenhuma imagem anexada", "E-mails que chegam em horário comercial"],
+            correta: 0,
+            dica: "Golpistas apelam para o medo e a urgência ('sua conta será bloqueada em 1 hora') para fazer você agir por impulso."
+          }
+        },
+        {
+          id: 3,
+          nome: "Módulo 3 (MFA & Criptografia)",
+          icone: "🔒",
+          competencia: "Você domina chaves de segurança, aplicativos autenticadores (TOTP) e criptografia de ponta a ponta",
+          licao: {
+            pergunta: "Qual método de Autenticação em Dois Fatores (2FA) é mais seguro contra clonagem de chip (SIM Swap)?",
+            opcoes: ["Aplicativos autenticadores (como Google Authenticator) ou chaves físicas (Passkeys)", "SMS tradicional com código de 4 dígitos", "Ligação telefônica aberta"],
+            correta: 0,
+            dica: "O código gerado no app fica salvo localmente no seu dispositivo e não pode ser interceptado por clonagem de linha telefônica."
+          }
+        },
+        {
+          id: 4,
+          nome: "Módulo 4 (Wi-Fi Público & VPN)",
+          icone: "🛡️",
+          competencia: "Você sabe se proteger em redes Wi-Fi públicas, usar VPNs confiáveis e configurar navegadores",
+          licao: {
+            pergunta: "Qual o maior perigo ao conectar em um Wi-Fi público e aberto (sem senha) em cafés ou aeroportos?",
+            opcoes: ["Outras pessoas na mesma rede podem interceptar dados não criptografados (ataque Man-in-the-Middle)", "Seu celular desligar a bateria instantaneamente", "O café cobrar mais caro na sua conta"],
+            correta: 0,
+            dica: "Em redes abertas sem proteção, qualquer pessoa com ferramentas simples pode farejar o tráfego da rede."
+          }
+        },
+        {
+          id: 5,
+          nome: "Módulo 5 (Zero Trust & Resposta a Incidentes)",
+          icone: "🕵️",
+          competencia: "Você entende conceitos de Zero Trust, Firewalls, defesa em profundidade e segurança corporativa",
+          licao: {
+            pergunta: "Qual é o princípio fundamental da arquitetura de segurança 'Zero Trust' adotada pelas maiores empresas de tecnologia?",
+            opcoes: ["'Nunca confie, sempre verifique': todo acesso interno ou externo deve ser autenticado e validado continuamente", "Confiar cegamente em quem já está conectado dentro do escritório", "Desligar os firewalls para agilizar os acessos"],
+            correta: 0,
+            dica: "No modelo Zero Trust, mesmo dentro da rede da empresa, cada solicitação é tratada como se viesse de uma rede aberta e hostil."
+          }
+        }
+      ]
     }
-  ];
+  };
+
+  function getModulos() {
+    const tema = state.tema || temas[0];
+    return (trilhasPorTema[tema] && trilhasPorTema[tema].modulos) || trilhasPorTema["Informática básica"].modulos;
+  }
+
+  function getPerguntasNivelamento() {
+    const tema = state.tema || temas[0];
+    return (trilhasPorTema[tema] && trilhasPorTema[tema].nivelamento) || trilhasPorTema["Informática básica"].nivelamento;
+  }
 
   // Estado salvo apenas na sessão (sessionStorage)
   let state = JSON.parse(sessionStorage.getItem("aprendia_state")) || {
@@ -842,6 +1081,47 @@
     window.scrollTo({ top: 0 });
   }
 
+  function sincronizarProgressoTema() {
+    if (!state.trilhas) state.trilhas = {};
+    const temaAtual = state.tema || temas[0];
+    if (!state.trilhas[temaAtual]) {
+      state.trilhas[temaAtual] = {
+        moduloInicial: 1,
+        moduloDesbloqueado: 1,
+        concluidos: [],
+        moduloDificuldade: "Módulo 1",
+        trilhaCelebrada: false
+      };
+    }
+    const t = state.trilhas[temaAtual];
+    state.moduloInicial = t.moduloInicial || 1;
+    state.moduloDesbloqueado = t.moduloDesbloqueado || 1;
+    state.concluidos = t.concluidos || [];
+    state.moduloDificuldade = t.moduloDificuldade || "Módulo 1";
+    state.trilhaCelebrada = !!t.trilhaCelebrada;
+  }
+
+  function salvarProgressoTema() {
+    if (!state.trilhas) state.trilhas = {};
+    const temaAtual = state.tema || temas[0];
+    state.trilhas[temaAtual] = {
+      moduloInicial: state.moduloInicial,
+      moduloDesbloqueado: state.moduloDesbloqueado,
+      concluidos: state.concluidos,
+      moduloDificuldade: state.moduloDificuldade,
+      trilhaCelebrada: state.trilhaCelebrada
+    };
+    salvarSessao();
+  }
+
+  function trocarTrilha() {
+    som.toque();
+    salvarProgressoTema();
+    renderTemas();
+    setBot("botTema", "idle");
+    mostrarTela("telaTema");
+  }
+
   function entrar() {
     som.toque();
     state.logado = true;
@@ -861,6 +1141,7 @@
       b.onclick = () => {
         som.toque();
         state.tema = t;
+        sincronizarProgressoTema();
         $("btnContinuarTema").disabled = false;
         renderTemas();
       };
@@ -870,6 +1151,7 @@
 
   function iniciarTeste() {
     som.toque();
+    sincronizarProgressoTema();
     idxTeste = 0;
     acertosTeste = 0;
     renderPerguntaTeste();
@@ -880,9 +1162,10 @@
   function renderPerguntaTeste() {
     respTesteSel = null;
     $("btnProxTeste").disabled = true;
-    const item = perguntasNivelamento[idxTeste];
-    $("progressoTeste").textContent = `Pergunta ${idxTeste + 1} de ${perguntasNivelamento.length}`;
-    $("barraTeste").style.width = `${(idxTeste / perguntasNivelamento.length) * 100}%`;
+    const perguntas = getPerguntasNivelamento();
+    const item = perguntas[idxTeste];
+    $("progressoTeste").textContent = `Pergunta ${idxTeste + 1} de ${perguntas.length} • ${state.tema || "Nivelamento"}`;
+    $("barraTeste").style.width = `${(idxTeste / perguntas.length) * 100}%`;
     $("perguntaTeste").textContent = item.q;
     const box = $("opcoesTeste");
     box.innerHTML = "";
@@ -901,9 +1184,10 @@
   }
 
   function proximaPerguntaTeste() {
-    if (respTesteSel === perguntasNivelamento[idxTeste].correta) acertosTeste++;
+    const perguntas = getPerguntasNivelamento();
+    if (respTesteSel === perguntas[idxTeste].correta) acertosTeste++;
     idxTeste++;
-    if (idxTeste < perguntasNivelamento.length) {
+    if (idxTeste < perguntas.length) {
       renderPerguntaTeste();
     } else {
       $("barraTeste").style.width = "100%";
@@ -915,7 +1199,7 @@
     finalizarTeste(0);
   }
 
-  // Regra hardcoded do escopo: 0-2 -> Módulo 1 | 3-5 -> Módulo 3 | 6-7 -> Módulo 5
+  // Regra do escopo: 0-2 -> Módulo 1 | 3-5 -> Módulo 3 | 6 -> Módulo 5
   function finalizarTeste(acertos) {
     let modInicio = 1;
     if (acertos >= 6) modInicio = 5;
@@ -927,12 +1211,12 @@
     state.concluidos = [];
     for (let i = 1; i < modInicio; i++) state.concluidos.push(i);
     state.moduloDificuldade = `Módulo ${modInicio}`;
-    salvarSessao();
+    salvarProgressoTema();
 
     $("topStats").style.display = "flex";
     $("mainNav").style.display = "flex";
     $("msgResultado").textContent =
-      `Você já manda bem no básico! Vamos começar em [Módulo ${modInicio}]`;
+      `Você mandou bem no nivelamento de ${state.tema}! Vamos começar em [Módulo ${modInicio}]`;
     atualizarTopo();
     mostrarTela("telaResultado");
     setBot("botResultado", "star");
@@ -960,7 +1244,10 @@
   const DESLOC = [0, 70, 90, 30, -50, -90, -60]; // ziguezague do caminho
 
   function renderTrilha() {
+    sincronizarProgressoTema();
+    const modulos = getModulos();
     $("nomeTemaTrilha").textContent = state.tema || temas[0];
+    if ($("unitIco")) $("unitIco").textContent = iconesTemas[state.tema] || "🚀";
     $("iaTrilha").textContent =
       `🤖 IA: "Notamos que você teve dificuldade em [${state.moduloDificuldade}]. Que tal revisar antes de avançar?"`;
 
@@ -1056,6 +1343,7 @@
   function abrirLicao(idMod) {
     moduloAtualId = idMod;
     respLicaoSel = null;
+    const modulos = getModulos();
     const mod = modulos.find(m => m.id === idMod);
     $("tituloModuloLicao").textContent = mod.nome;
     $("perguntaLicao").textContent = mod.licao.pergunta;
@@ -1089,6 +1377,7 @@
   ];
 
   function verificarResposta() {
+    const modulos = getModulos();
     const mod = modulos.find(m => m.id === moduloAtualId);
     const fb = $("boxFeedback");
     const opts = document.querySelectorAll("#opcoesLicao .opt");
@@ -1112,7 +1401,7 @@
         state.moduloDesbloqueado++;
         ultimoDesbloqueado = state.moduloDesbloqueado;
       }
-      salvarSessao();
+      salvarProgressoTema();
       animarXP(xpAntes, state.xp);
 
       $("barraLicao").style.width = "100%";
@@ -1128,7 +1417,7 @@
       $("sheetSub").textContent = "💡 Dica: " + mod.licao.dica;
       opts[respLicaoSel].classList.add("wrong");
       state.moduloDificuldade = mod.nome;
-      salvarSessao();
+      salvarProgressoTema();
       setBot("botLicao", "sad");
       setBot("botSheet", "sad");
       abrirSheet("err");
@@ -1149,15 +1438,17 @@
   function continuarAposAcerto() {
     fecharSheet();
     irPara("telaTrilha");
+    const modulos = getModulos();
     if (state.concluidos.length === modulos.length && !state.trilhaCelebrada) {
       state.trilhaCelebrada = true;
-      salvarSessao();
+      salvarProgressoTema();
       setTimeout(mostrarCelebracao, 350);
     }
   }
 
   /* ---------- Celebração de conclusão ---------- */
   function mostrarCelebracao() {
+    const modulos = getModulos();
     $("celebTema").textContent = state.tema || temas[0];
     $("celebXP").textContent = state.xp;
     $("celebStreak").textContent = state.sequencia;
@@ -1176,6 +1467,8 @@
 
   /* ---------- Perfil ---------- */
   function renderPerfil() {
+    sincronizarProgressoTema();
+    const modulos = getModulos();
     $("xpPerfil").textContent = state.xp;
     $("streakPerfil").textContent = state.sequencia;
     $("temaPerfil").textContent = state.tema || temas[0];
@@ -1190,7 +1483,7 @@
     lista.innerHTML = "";
     const desbloqueadas = modulos.filter(m => state.concluidos.includes(m.id));
     if (desbloqueadas.length === 0) {
-      lista.innerHTML = `<div class="card">Conclua um módulo para desbloquear suas competências.</div>`;
+      lista.innerHTML = `<div class="card">Conclua um módulo para desbloquear suas competências em ${state.tema || "tecnologia"}.</div>`;
     } else {
       desbloqueadas.forEach(m => {
         const d = document.createElement("div");
